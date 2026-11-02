@@ -213,6 +213,12 @@ The layout is:
 - `examples/typo3`: an app against TYPO3.
 - `tests/e2e`: Playwright.
 
+### Versions
+
+Node 26 LTS (`.nvmrc`), pnpm 12.16 (`packageManager`), Astro 7, Vite as Astro ships it, ESLint 10, Vitest 5 and Playwright 1.64. The package, the mock server and the e2e suite type-check with TypeScript 7.
+
+There is one exception. The workspace root and the two examples pin TypeScript 6.0.3, because their TypeScript consumers need the classic compiler API, which TypeScript 7 no longer ships: typescript-eslint (peer `<6.1`) and `astro check` (Volar, peer `^5 || ^6`). `pnpm outdated` lists only this.
+
 ## License
 
 MIT
