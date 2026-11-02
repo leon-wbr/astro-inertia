@@ -161,9 +161,10 @@ async function route(ctx: Ctx): Promise<void> {
   const { req, url, session } = ctx;
   const method = req.method ?? "GET";
 
-  // Asset versioning: only GET Inertia requests are checked.
-  const clientVersion = req.headers["x-inertia-version"];
-  if (ctx.isInertia && method === "GET" && clientVersion !== undefined && clientVersion !== ctx.version) {
+  // Asset versioning: only GET Inertia requests are checked. Like
+  // inertia-laravel and inertia-typo3, a missing header is a mismatch too.
+  const clientVersion = req.headers["x-inertia-version"] ?? "";
+  if (ctx.isInertia && method === "GET" && clientVersion !== ctx.version) {
     ctx.res.writeHead(409, { "x-inertia-location": url.href, "x-inertia-version": ctx.version });
     ctx.res.end();
     return;

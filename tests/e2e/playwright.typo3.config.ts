@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // The TYPO3 DDEV example (scripts/typo3.sh up) must be running.
-const BACKEND = process.env.INERTIA_BACKEND ?? "http://astro-inertia-typo3.ddev.site";
+const BACKEND = process.env.INERTIA_BACKEND ?? "http://astro-inertia-e2e.ddev.site";
 const ASTRO_PORT = 4621;
 
 export default defineConfig({

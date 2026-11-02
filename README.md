@@ -63,20 +63,20 @@ Your own routes in `src/pages/` still win. astro-inertia only injects a low-prio
 
 ## Configuration
 
-| Option                | Default                                                      | Meaning                                                                                                                             |
-| --------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `backend`             | `INERTIA_BACKEND` at runtime                                 | Base URL of the Inertia server. A base path (`http://app/site`) is kept.                                                            |
-| `version`             | none                                                         | Asset version or schema hash this frontend was built for. Sent as `X-Inertia-Version` on GET.                                       |
-| `onVersionMismatch`   | `"reload"`                                                   | On a 409 version mismatch, `"reload"` renders without the check and sets `X-Astro-Inertia-Version-Mismatch`. `"error"` answers 502. |
-| `timeout`             | `10000`                                                      | Backend timeout in ms. A timeout answers 504; an unreachable backend answers 502.                                                   |
-| `forwardHeaders`      | cookie, content-type, accept-language, authorization, …      | Request headers copied to the backend. Replaces the default list.                                                                   |
-| `extraForwardHeaders` | `[]`                                                         | Added to the default list.                                                                                                          |
-| `responseHeaders`     | cache-control, expires, vary, content-language, x-robots-tag | Copied from a page-object response onto the HTML.                                                                                   |
-| `cacheTagHeaders`     | x-cache-tags, cache-tag, surrogate-key, xkey                 | Cache-tag headers copied through for CDN purges.                                                                                    |
-| `pagesDir`            | `src/pages-inertia`                                          | Where components are looked up.                                                                                                     |
-| `route`               | `/[...inertia]`                                              | The injected catch-all.                                                                                                             |
-| `runtime`             | none                                                         | A module whose exports add functions (see below).                                                                                   |
-| `types`               | none                                                         | `{ schema, output? }`: generate prop types from a JSON Schema.                                                                      |
+| Option                | Default                                                      | Meaning                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backend`             | `INERTIA_BACKEND` at runtime                                 | Base URL of the Inertia server. A base path (`http://app/site`) is kept.                                                                    |
+| `version`             | none                                                         | Asset version or schema hash this frontend was built for. Sent as `X-Inertia-Version` on GET.                                               |
+| `onVersionMismatch`   | `"reload"`                                                   | On a 409 version mismatch, `"reload"` retries with the server's version and sets `X-Astro-Inertia-Version-Mismatch`. `"error"` answers 502. |
+| `timeout`             | `10000`                                                      | Backend timeout in ms. A timeout answers 504; an unreachable backend answers 502.                                                           |
+| `forwardHeaders`      | cookie, content-type, accept-language, authorization, …      | Request headers copied to the backend. Replaces the default list.                                                                           |
+| `extraForwardHeaders` | `[]`                                                         | Added to the default list.                                                                                                                  |
+| `responseHeaders`     | cache-control, expires, vary, content-language, x-robots-tag | Copied from a page-object response onto the HTML.                                                                                           |
+| `cacheTagHeaders`     | x-cache-tags, cache-tag, surrogate-key, xkey                 | Cache-tag headers copied through for CDN purges.                                                                                            |
+| `pagesDir`            | `src/pages-inertia`                                          | Where components are looked up.                                                                                                             |
+| `route`               | `/[...inertia]`                                              | The injected catch-all.                                                                                                                     |
+| `runtime`             | none                                                         | A module whose exports add functions (see below).                                                                                           |
+| `types`               | none                                                         | `{ schema, output? }`: generate prop types from a JSON Schema.                                                                              |
 
 Options in `astro.config` are serialised into the build, so functions go in the `runtime` module:
 
@@ -165,9 +165,16 @@ On `astro dev`, `build` and `sync`, astro-inertia writes `src/inertia.d.ts`, and
 
 `examples/typo3` renders the DDEV example from [`leon-wbr/inertia-typo3`](https://github.com/leon-wbr/inertia-typo3) (TYPO3 14 with the Inertia 3 adapter). TYPO3 keeps the page tree, languages, redirects and access. Astro renders `contentElements` and the navigation.
 
+To run it, start the adapter's own example (`ddev start && ddev setup-example` in a checkout of `inertia-typo3`, then `pnpm build` in its `example/`), and pass its URL explicitly. The example does not read `.env` at runtime.
+
 ```sh
-pnpm typo3:up        # clones the adapter branch to .cache/, ddev start + setup
-pnpm --filter example-typo3 dev   # INERTIA_BACKEND=https://inertia-typo3.ddev.site
+INERTIA_BACKEND=https://inertia-typo3.ddev.site pnpm --filter example-typo3 dev
+```
+
+The TYPO3 e2e tests bring up their own fixture, a clone of the adapter's `main` in `.cache/`, as the DDEV project `astro-inertia-e2e`:
+
+```sh
+pnpm typo3:up        # clone to .cache/, ddev start, setup, build the assets
 pnpm test:e2e:typo3
 pnpm typo3:down      # ddev stop
 ```

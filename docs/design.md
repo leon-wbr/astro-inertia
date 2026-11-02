@@ -61,7 +61,7 @@ By default every `.astro` file under `src/pages-inertia/` is a candidate, throug
 
 `version` in the config is a string, or a `version(request)` function in the runtime module. It is the asset version or schema hash that this Astro build was made for. It is sent as `X-Inertia-Version` on GET requests. When the server answers 409 with `X-Inertia-Version`, the two disagree, and `onVersionMismatch` decides what happens:
 
-- `"reload"` (the default) repeats the request without `X-Inertia-Version`. That is the server-side equivalent of the browser client's full page reload. It renders the result and adds `X-Astro-Inertia-Version-Mismatch: <server version>` to the response, and logs a warning once per server version.
+- `"reload"` (the default) repeats the request with the server's version from the 409. That is the server-side equivalent of the browser client's full page reload. Repeating it without the header would not work: inertia-laravel and inertia-typo3 treat a missing `X-Inertia-Version` as a mismatch too. It renders the result and adds `X-Astro-Inertia-Version-Mismatch: <server version>` to the response, and logs a warning once per server version.
 - `"error"` renders a 502, which suits CI and staging environments that should fail loudly when the frontend is out of date.
 - `onVersionMismatch(ctx)` in the runtime module, returning `"reload"`, `"error"` or a `Response`.
 

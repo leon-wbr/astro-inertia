@@ -48,18 +48,39 @@ describe("handle", () => {
     expect(result.headers.get("x-cache-tags")).toBe("pageId_1");
   });
 
-  it("reloads without the version on a mismatch and flags the response", async () => {
+  // Like inertia-laravel and inertia-typo3: a missing X-Inertia-Version header
+  // counts as a mismatch too, so only the server's own version gets a page.
+  const strictServer = (seen: (string | null)[]) => async (request: Request) => {
+    seen.push(request.headers.get("x-inertia-version"));
+    return request.headers.get("x-inertia-version") === "2"
+      ? page()
+      : new Response(null, { status: 409, headers: { "x-inertia-location": request.url, "x-inertia-version": "2" } });
+  };
+
+  it("reloads with the server's version on a mismatch and flags the response", async () => {
     const seen: (string | null)[] = [];
-    const d = deps(async (request) => {
-      seen.push(request.headers.get("x-inertia-version"));
-      return request.headers.has("x-inertia-version")
-        ? new Response(null, { status: 409, headers: { "x-inertia-location": request.url, "x-inertia-version": "2" } })
-        : page();
-    });
+    const d = deps(strictServer(seen));
     const result = await handle(astro(), d);
-    expect(seen).toEqual(["1", null]);
+    expect(seen).toEqual(["1", "2"]);
     expect(result.kind).toBe("render");
     if (result.kind === "render") expect(result.headers.get(MISMATCH_HEADER)).toBe("2");
+  });
+
+  it("adopts the server's version silently when none is configured", async () => {
+    const seen: (string | null)[] = [];
+    const d = deps(strictServer(seen));
+    d.options.version = undefined;
+    const result = await handle(astro(), d);
+    expect(seen).toEqual([null, "2"]);
+    expect(result.kind).toBe("render");
+    if (result.kind === "render") expect(result.headers.get(MISMATCH_HEADER)).toBeNull();
+    expect(d.log?.warn).not.toHaveBeenCalled();
+  });
+
+  it("fails with 502 when the server rejects its own version", async () => {
+    const d = deps(async () => new Response(null, { status: 409, headers: { "x-inertia-version": "2" } }));
+    const result = await handle(astro(), d);
+    expect(result.kind === "response" && result.response.status).toBe(502);
   });
 
   it("fails with 502 on a mismatch when told to", async () => {

@@ -145,6 +145,16 @@ async function handleInner(astro: AstroLike, deps: HandlerDeps): Promise<HandleR
   let result = await fetchBackend(astro, deps, { version });
   let mismatch: string | undefined;
 
+  if (result.kind === "version-mismatch" && version === undefined) {
+    // No version configured: this frontend isn't tied to the server's assets,
+    // so take the server's version. Servers like inertia-laravel and
+    // inertia-typo3 treat a missing header as a mismatch too.
+    result = await fetchBackend(astro, deps, { version: result.serverVersion });
+    if (result.kind === "version-mismatch") {
+      throw new BackendError("astro-inertia: the server answered 409 to its own version", 502);
+    }
+  }
+
   if (result.kind === "version-mismatch") {
     const serverVersion = result.serverVersion;
     const action =
@@ -167,13 +177,13 @@ async function handleInner(astro: AstroLike, deps: HandlerDeps): Promise<HandleR
     if (!warnedVersions.has(serverVersion)) {
       warnedVersions.add(serverVersion);
       (deps.log ?? console).warn(
-        `astro-inertia: version mismatch (frontend "${version}", server "${serverVersion}"); rendering without the version check.`,
+        `astro-inertia: version mismatch (frontend "${version}", server "${serverVersion}"); rendering with the server's version.`,
       );
     }
     mismatch = serverVersion || "unknown";
-    result = await fetchBackend(astro, deps, { version: undefined });
+    result = await fetchBackend(astro, deps, { version: serverVersion || undefined });
     if (result.kind === "version-mismatch") {
-      throw new BackendError("astro-inertia: the server answered 409 again without a version header", 502);
+      throw new BackendError("astro-inertia: the server answered 409 to its own version", 502);
     }
   }
 

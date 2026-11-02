@@ -4,7 +4,7 @@ import inertia from "astro-inertia";
 
 // TYPO3 keeps routing, languages, redirects and access; Astro renders the
 // page objects of the inertia-typo3 adapter. The backend URL comes from
-// INERTIA_BACKEND at runtime, e.g. http://astro-inertia-typo3.ddev.site
+// INERTIA_BACKEND at runtime, e.g. https://inertia-typo3.ddev.site
 // (`pnpm typo3:up` starts it).
 export default defineConfig({
   output: "server",

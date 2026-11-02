@@ -156,7 +156,7 @@ test.describe("deferred props", () => {
 });
 
 test.describe("protocol edge cases", () => {
-  test("a version mismatch reloads without the version and flags it", async ({ page, context, baseURL }) => {
+  test("a version mismatch reloads with the server's version and flags it", async ({ page, context, baseURL }) => {
     await context.addCookies([{ name: "mock_version", value: "2", url: baseURL! }]);
     const response = await page.goto("/about");
     expect(response?.status()).toBe(200);
