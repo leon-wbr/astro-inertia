@@ -50,20 +50,20 @@ The integration injects one catch-all route, `/[...inertia]`, at a lower priorit
 | `mergeProps`, `prependProps`, `deepMergeProps`, `matchPropsOn`, `scrollProps` | Exposed on `page`. They only matter to a client that keeps state between visits. A server-rendered visit always gets complete props, so no merging is done. |
 | `encryptHistory`, `clearHistory`, `preserveFragment`                          | Exposed, no effect. Astro does not write page state into `history.state`.                                                                                   |
 | `onceProps`                                                                   | Exposed. `X-Inertia-Except-Once-Props` is never sent, so once props always arrive.                                                                          |
-| `flash`, `sharedProps`, `rescuedProps`                                        | Exposed on `page`. `rescuedProps` makes `<Deferred>` render its `error` slot.                                                                               |
+| `flash`, `sharedProps`, `rescuedProps`                                        | Exposed on `page`. A key in `rescuedProps` makes `<Deferred>` render its `error` component.                                                                 |
 | `liveProps`                                                                   | Out of scope (needs a browser broadcaster).                                                                                                                 |
 
 ### Component resolution
 
-By default every `.astro` file under `src/pages-inertia/` is a candidate, through `import.meta.glob`, so it is code-split and lazy. `Users/Index` resolves to `src/pages-inertia/Users/Index.astro`. A `resolve(name)` function in the config can replace or extend this, for example to map TYPO3's `layout/default` to a different file. A component that resolves to nothing is a clear error, never a blank page. In development it throws (Astro's error overlay shows the name and the files that were searched). In production it renders a 500 with `astro-inertia: no component "X"`.
+By default every `.astro` file under `src/pages-inertia/` is a candidate, through `import.meta.glob`, so it is code-split and lazy. `Users/Index` resolves to `src/pages-inertia/Users/Index.astro`. A `resolve(name)` function in the runtime module can replace or extend this, for example to map TYPO3's `layout/default` to a different file. A component that resolves to nothing is a clear error, never a blank page. Astro answers with a 500 that names the component, the file it expected and the components it found.
 
 ## Versioning
 
-`version` in the config is a string or a function. It is the asset version or schema hash that this Astro build was made for. It is sent as `X-Inertia-Version` on GET requests. When the server answers 409 with `X-Inertia-Version`, the two disagree, and `onVersionMismatch` decides what happens:
+`version` in the config is a string, or a `version(request)` function in the runtime module. It is the asset version or schema hash that this Astro build was made for. It is sent as `X-Inertia-Version` on GET requests. When the server answers 409 with `X-Inertia-Version`, the two disagree, and `onVersionMismatch` decides what happens:
 
 - `"reload"` (the default) repeats the request without `X-Inertia-Version`. That is the server-side equivalent of the browser client's full page reload. It renders the result and adds `X-Astro-Inertia-Version-Mismatch: <server version>` to the response, and logs a warning once per server version.
 - `"error"` renders a 502, which suits CI and staging environments that should fail loudly when the frontend is out of date.
-- A function `(serverVersion, ctx) => Response | "reload" | "error"`.
+- `onVersionMismatch(ctx)` in the runtime module, returning `"reload"`, `"error"` or a `Response`.
 
 ## Forms
 
@@ -76,9 +76,9 @@ Plain HTML forms post to the URL the backend expects, which Astro forwards. The 
 Deferred props must not block the first paint. There are two options.
 
 - **Streaming.** Astro streams HTML in document order. An async component that awaits the partial reload holds back everything after it, so the content after the deferred prop arrives late. Only content before it gets the speedup.
-- **Server islands (chosen).** `<Deferred data="stats" server:defer>` renders its `fallback` slot in the first response. The browser then fetches the island, which makes one Inertia partial reload (`X-Inertia-Partial-Component: <component>`, `X-Inertia-Partial-Data: <keys>`) with the user's cookies, and swaps in the rendered result. The page is done and cacheable without the deferred data, and each island can be cached on its own. This is also how the browser Inertia client behaves: one request per group after the page has loaded.
+- **Server islands (chosen).** `<Deferred page={page} data="default" render="Users/Stats">` renders its `fallback` slot in the first response. The browser then fetches the island, which makes one Inertia partial reload (`X-Inertia-Partial-Component: <component>`, `X-Inertia-Partial-Data: <keys>`) with the user's cookies, and swaps in the rendered result. The page is done and cacheable without the deferred data, and each island can be cached on its own. This is also how the browser Inertia client behaves: one request per group after the page has loaded.
 
-The island needs to know what to render. `<Deferred>` gets the page's `url`, `component` and the requested keys as island props, which Astro encrypts. It renders a component resolved by name (`render="Dashboard/Stats"`) with the partial props merged over the page props. A group name expands to the keys `deferredProps[group]` lists. Missing keys or keys listed in `rescuedProps` render the `error` slot.
+The island needs to know what to render. Island props travel encrypted in the island's URL, so `<Deferred>` is a thin wrapper. It expands a group name to the keys that `deferredProps[group]` lists, then renders an internal `DeferredIsland` with `server:defer` and only the page's `url`, `component` and `version`, the keys and the component names. That keeps the island URL to about 300 characters, whatever the page's props are. The island renders the component named by `render`, resolved like page components, with the loaded props. When keys are missing, a key is listed in `rescuedProps`, or the request fails, it renders the component named by `error` instead, or a short message if there is none.
 
 ## Client side
 
@@ -102,22 +102,26 @@ The response keeps the backend's caching headers: `Cache-Control`, `Vary` minus 
 
 ## Configuration
 
+Options in `astro.config` are serialised into the build, so they are plain values. Functions go in a runtime module that the `runtime` option names.
+
 ```ts
 inertia({
-  backend: "http://typo3.internal", // required; or a function (request) => URL
-  version: process.env.ASSET_VERSION, // string | () => string | undefined
-  onVersionMismatch: "reload", // "reload" | "error" | fn
-  timeout: 10_000, // ms
-  forwardHeaders: [...defaults, "x-tenant"],
-  responseHeaders: [...defaults],
+  backend: "http://typo3.internal", // optional: INERTIA_BACKEND is read at request time otherwise
+  version: process.env.ASSET_VERSION, // asset version or schema hash, sent on GET
+  onVersionMismatch: "reload", // "reload" | "error"
+  timeout: 10_000, // ms; a timeout answers 504
+  forwardHeaders: [...DEFAULT_FORWARD_HEADERS], // replaces the request header list
+  extraForwardHeaders: ["x-tenant"], // or adds to it
+  responseHeaders: [...DEFAULT_RESPONSE_HEADERS],
   cacheTagHeaders: ["x-cache-tags", "cache-tag", "surrogate-key", "xkey"],
   pagesDir: "src/pages-inertia",
-  resolve: (name) => import(`./src/pages-inertia/${name}.astro`), // optional
-  layout: undefined, // optional wrapper component
-  types: { schema: "./inertia.schema.json" },
   route: "/[...inertia]", // the injected catch-all
+  runtime: "./src/inertia.runtime.ts", // resolve, backend, version, onVersionMismatch, transformPage
+  types: { schema: "./inertia.schema.json", output: "src/inertia.d.ts" },
 });
 ```
+
+`X-Forwarded-Host` comes from `Astro.url`. Astro only trusts the incoming Host header for domains listed in `security.allowedDomains`, so production setups should list their public host there. Otherwise the backend sees `localhost`.
 
 ## Out of scope
 
