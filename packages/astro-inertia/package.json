@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "description": "Astro as a server-side Inertia client: render any Inertia v3 server's page objects with Astro components.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leon-wbr/astro-inertia.git",
+    "directory": "packages/astro-inertia"
+  },
+  "homepage": "https://github.com/leon-wbr/astro-inertia#readme",
+  "bugs": "https://github.com/leon-wbr/astro-inertia/issues",
   "type": "module",
   "keywords": [
     "astro-integration",

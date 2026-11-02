@@ -1,5 +1,8 @@
 # astro-inertia
 
+> [!WARNING]
+> **Highly experimental, work in progress.** The API, configuration and behaviour can change in any release, without notice or a migration path. It isn't published to npm yet. Don't use it in production.
+
 Astro as an [Inertia](https://inertiajs.com) client, rendering on the server.
 
 Your Inertia server (Laravel, Rails, Django, AdonisJS, or TYPO3 through [`leon-wbr/inertia-typo3`](https://github.com/leon-wbr/inertia-typo3)) keeps routing, sessions, validation and auth, and answers each request with a page object: `{ component, props, url, version }`. astro-inertia forwards each request to it with `X-Inertia: true` and renders the Astro component that `component` names. The browser gets plain HTML.
@@ -221,4 +224,4 @@ There is one exception. The workspace root and the two examples pin TypeScript 6
 
 ## License
 
-MIT
+[MIT](LICENSE), like Inertia and Astro.
