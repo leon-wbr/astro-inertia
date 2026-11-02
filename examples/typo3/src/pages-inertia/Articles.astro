@@ -1,0 +1,45 @@
+---
+import { definePage } from "astro-inertia";
+import ContentElements from "../components/ContentElements.astro";
+import Layout from "../layouts/Layout.astro";
+import type { SharedProps } from "../types";
+
+interface Article {
+  id: number;
+  title: string;
+}
+
+// A scroll prop, made for the Inertia client's <InfiniteScroll>. Rendered on
+// the server, each page of articles is its own URL (?page=2), and the
+// scroll metadata says which pages come before and after it.
+const { props, page } = definePage<
+  SharedProps & { articles: { data: Article[]; meta: { currentPage: number; lastPage: number } } }
+>(Astro);
+const scroll = page.scrollProps?.articles;
+const pageName = scroll?.pageName ?? "page";
+const path = page.url.split("?")[0];
+const linkTo = (target: number | string) => `${path}?${new URLSearchParams({ [pageName]: String(target) })}`;
+const previous = scroll?.previousPage ?? null;
+const next = scroll?.nextPage ?? null;
+---
+
+<Layout page={page}>
+  <ContentElements elements={props.contentElements} />
+  <ul data-testid="articles">
+    {props.articles.data.map((article) => (
+      <li>{article.title}</li>
+    ))}
+  </ul>
+  <nav aria-label="Articles">
+    {previous !== null && (
+      <a href={linkTo(previous)} rel="prev">
+        Previous articles
+      </a>
+    )}
+    {next !== null && (
+      <a href={linkTo(next)} rel="next">
+        More articles
+      </a>
+    )}
+  </nav>
+</Layout>

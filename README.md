@@ -163,7 +163,7 @@ On `astro dev`, `build` and `sync`, astro-inertia writes `src/inertia.d.ts`, and
 
 ### TYPO3
 
-`examples/typo3` renders the DDEV example from [`leon-wbr/inertia-typo3`](https://github.com/leon-wbr/inertia-typo3) (TYPO3 14 with the Inertia 3 adapter). TYPO3 keeps the page tree, languages, redirects and access. Astro renders `contentElements` and the navigation.
+`examples/typo3` renders the DDEV example from [`leon-wbr/inertia-typo3`](https://github.com/leon-wbr/inertia-typo3) (TYPO3 14 with the Inertia 3 adapter). TYPO3 keeps the page tree, languages, redirects and access. Astro renders `contentElements` and the navigation, the contact form's `errors` and `page.flash` message from TYPO3's session, the shared once prop `labels`, and the Articles page's scroll prop as one page per URL with previous and next links.
 
 To run it, start the adapter's own example (`ddev start && ddev setup-example` in a checkout of `inertia-typo3`, then `pnpm build` in its `example/`), and pass its URL explicitly. The example does not read `.env` at runtime.
 

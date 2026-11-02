@@ -4,21 +4,28 @@ import ContentElements from "../components/ContentElements.astro";
 import Layout from "../layouts/Layout.astro";
 import type { SharedProps } from "../types";
 
-const { props, page } = definePage<SharedProps & { sent: string | null }>(Astro);
+// The server validates the form and redirects back to /contact. Validation
+// errors arrive in the `errors` prop and a success message as the page's
+// flash data, both once, through TYPO3's session. A plain form post sends
+// no X-Inertia-Error-Bag header, so the errors aren't scoped to a bag.
+const { props, page } = definePage<SharedProps>(Astro);
 const action = page.url.split("?")[0];
 const nameError = errorFor(props.errors, "name");
-const thanks = props.site.language === "de" ? `Danke, ${props.sent}!` : `Thanks, ${props.sent}!`;
+const success = typeof page.flash?.success === "string" ? page.flash.success : undefined;
 ---
 
 <Layout page={page}>
   <ContentElements elements={props.contentElements} />
-  {props.sent && <p role="status">{thanks}</p>}
-  {nameError && <p role="alert">{nameError}</p>}
-  <form method="post" action={action}>
-    <label>
-      Name
-      <input name="name" aria-invalid={nameError ? "true" : undefined} />
-    </label>
-    <button type="submit">Send</button>
-  </form>
+  {success ? (
+    <p role="status">{success}</p>
+  ) : (
+    <form method="post" action={action}>
+      <label>
+        Name
+        <input name="name" aria-invalid={nameError ? "true" : undefined} />
+      </label>
+      {nameError && <p role="alert">{nameError}</p>}
+      <button type="submit">Send</button>
+    </form>
+  )}
 </Layout>

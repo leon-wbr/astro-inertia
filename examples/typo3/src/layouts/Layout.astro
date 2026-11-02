@@ -8,7 +8,7 @@ interface Props {
 }
 
 const { page } = Astro.props;
-const { site, navigation, title } = page.props;
+const { site, navigation, title, labels } = page.props;
 ---
 
 <!doctype html>
@@ -43,6 +43,11 @@ const { site, navigation, title } = page.props;
       <h1>{title}</h1>
       <slot />
     </main>
+    <footer>
+      <p data-testid="labels" title={`Loaded at ${labels.loadedAt}`}>
+        {labels.footer}
+      </p>
+    </footer>
   </body>
 </html>
 
@@ -62,7 +67,8 @@ const { site, navigation, title } = page.props;
   [aria-current] {
     font-weight: bold;
   }
-  main {
+  main,
+  footer {
     padding: 1rem;
     font-family: system-ui, sans-serif;
   }
