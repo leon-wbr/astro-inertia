@@ -1,0 +1,25 @@
+---
+import { definePage } from "astro-inertia";
+import Deferred from "astro-inertia/Deferred.astro";
+import ContentElements from "../components/ContentElements.astro";
+import Layout from "../layouts/Layout.astro";
+import type { SharedProps } from "../types";
+
+const { props, page } = definePage<
+  SharedProps & { items: { id: number; title: string }[]; pagination: { page: number; hasMore: boolean } }
+>(Astro);
+---
+
+<Layout page={page}>
+  <ContentElements elements={props.contentElements} />
+  <ul data-testid="items">
+    {props.items.map((item) => (
+      <li>{item.title}</li>
+    ))}
+  </ul>
+  <Deferred page={page} data="default" render="partials/Stats">
+    <p slot="fallback" data-testid="stats-loading">
+      Loading statistics…
+    </p>
+  </Deferred>
+</Layout>

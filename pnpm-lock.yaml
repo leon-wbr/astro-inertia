@@ -225,6 +225,25 @@ importers:
         specifier: ~6.0.3
         version: 6.0.3
 
+  examples/typo3:
+    dependencies:
+      '@astrojs/node':
+        specifier: ^11.1.9
+        version: 11.1.9(astro@7.4.5(@types/node@26.6.6)(yaml@2.9.1))
+      astro:
+        specifier: ^7.4.5
+        version: 7.4.5(@types/node@26.6.6)(yaml@2.9.1)
+      astro-inertia:
+        specifier: workspace:*
+        version: link:../../packages/astro-inertia
+    devDependencies:
+      '@astrojs/check':
+        specifier: ^0.9.12
+        version: 0.9.12(@emnapi/runtime@1.11.3)(prettier-plugin-astro@1.1.2(prettier@3.9.10))(prettier@3.9.10)(typescript@6.0.3)
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+
   packages/astro-inertia:
     dependencies:
       json-schema-to-typescript:

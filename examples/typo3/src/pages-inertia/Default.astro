@@ -1,0 +1,12 @@
+---
+import { definePage } from "astro-inertia";
+import ContentElements from "../components/ContentElements.astro";
+import Layout from "../layouts/Layout.astro";
+import type { SharedProps } from "../types";
+
+const { props, page } = definePage<SharedProps>(Astro);
+---
+
+<Layout page={page}>
+  <ContentElements elements={props.contentElements} />
+</Layout>

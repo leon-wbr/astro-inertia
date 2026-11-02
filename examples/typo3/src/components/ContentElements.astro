@@ -1,0 +1,20 @@
+---
+import type { ContentElement } from "../types";
+
+interface Props {
+  elements: ContentElement[];
+}
+
+const { elements } = Astro.props;
+---
+
+{elements.map((element) =>
+  element.html !== null ? (
+    <Fragment set:html={element.html} />
+  ) : (
+    <section id={`c${element.data.uid}`} data-ctype={element.CType}>
+      {element.data.header && <h2>{element.data.header}</h2>}
+      {element.data.subheader && <p>{element.data.subheader}</p>}
+    </section>
+  ),
+)}

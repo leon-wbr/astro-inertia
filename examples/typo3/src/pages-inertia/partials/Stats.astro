@@ -1,0 +1,9 @@
+---
+import { definePage } from "astro-inertia";
+
+const { props } = definePage<{ stats: { contentElements: number; generatedAt: string } }>(Astro);
+---
+
+<p data-testid="stats">
+  {props.stats.contentElements} content element(s), generated at <time>{props.stats.generatedAt}</time>
+</p>
