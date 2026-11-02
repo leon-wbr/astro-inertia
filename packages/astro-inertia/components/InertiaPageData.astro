@@ -1,0 +1,24 @@
+---
+/**
+ * The page object as Inertia v3 markup, for client islands:
+ * <script type="application/json" data-page="app">. Read it with
+ * getPage() from "astro-inertia/client".
+ */
+import type { AnyPage } from "astro-inertia";
+
+interface Props {
+  page?: AnyPage;
+  id?: string;
+}
+
+const page = Astro.props.page ?? Astro.locals.inertia?.page;
+const id = Astro.props.id ?? "app";
+// Escape so the JSON can't close the script element (as inertia-laravel does).
+const json = JSON.stringify(page ?? null)
+  .replace(/</g, "\\u003C")
+  .replace(/>/g, "\\u003E")
+  .replace(/&/g, "\\u0026")
+  .replace(/\//g, "\\/");
+---
+
+<script type="application/json" data-page={id} set:html={json} />

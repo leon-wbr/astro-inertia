@@ -1,0 +1,9 @@
+---
+import { definePage } from "astro-inertia";
+
+const { props } = definePage<"Users/Index">(Astro);
+---
+
+<p data-testid="stats">
+  {props.stats?.active} of {props.stats?.total} users active
+</p>

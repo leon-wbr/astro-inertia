@@ -1,0 +1,11 @@
+---
+import { definePage } from "astro-inertia";
+import Layout from "../layouts/Layout.astro";
+
+const { props, page } = definePage<"Error">(Astro);
+---
+
+<Layout title={`Error ${props.status}`} page={page}>
+  <h1>Error {props.status}</h1>
+  <p>{props.message}</p>
+</Layout>

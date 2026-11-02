@@ -1,0 +1,16 @@
+{
+  "name": "e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm test:mock && pnpm test:typo3",
+    "test:mock": "playwright test -c playwright.mock.config.ts",
+    "test:typo3": "playwright test -c playwright.typo3.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
+  }
+}

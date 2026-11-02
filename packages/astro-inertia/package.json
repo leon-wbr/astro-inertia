@@ -1,0 +1,64 @@
+{
+  "name": "astro-inertia",
+  "version": "0.1.0",
+  "description": "Astro as a server-side Inertia client: render any Inertia v3 server's page objects with Astro components.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "astro-integration",
+    "astro-component",
+    "withastro",
+    "inertia",
+    "inertiajs",
+    "typo3",
+    "laravel"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./dist/runtime.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./codegen": {
+      "types": "./dist/codegen.d.ts",
+      "default": "./dist/codegen.js"
+    },
+    "./route.astro": "./components/route.astro",
+    "./Deferred.astro": "./components/Deferred.astro",
+    "./InertiaPageData.astro": "./components/InertiaPageData.astro",
+    "./components": "./components/index.ts",
+    "./DeferredIsland.astro": "./components/DeferredIsland.astro"
+  },
+  "files": [
+    "dist",
+    "components"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "astro": "^7.0.0"
+  },
+  "dependencies": {
+    "json-schema-to-typescript": "^16.0.0"
+  },
+  "devDependencies": {
+    "@types/json-schema": "^7.0.15",
+    "@types/node": "^26.6.6",
+    "astro": "^7.4.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=22.23.4"
+  }
+}

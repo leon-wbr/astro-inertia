@@ -1,0 +1,20 @@
+---
+/**
+ * The injected catch-all route: forwards the request to the Inertia
+ * server and renders the component its page object names.
+ */
+import { handleRequest } from "astro-inertia/runtime";
+
+const result = await handleRequest(Astro);
+if (result.kind === "response") return result.response;
+
+const { Component, page, status, headers } = result;
+Astro.response.status = status;
+for (const [name, value] of headers) {
+  if (name !== "set-cookie") Astro.response.headers.set(name, value);
+}
+for (const cookie of headers.getSetCookie()) Astro.response.headers.append("set-cookie", cookie);
+Astro.locals.inertia = { page };
+---
+
+<Component {...page.props} page={page} />

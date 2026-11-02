@@ -1,0 +1,18 @@
+---
+import { definePage } from "astro-inertia";
+import Layout from "../layouts/Layout.astro";
+
+const { props, page } = definePage<"Home">(Astro);
+---
+
+<Layout title={props.title} page={page}>
+  <h1>{props.title}</h1>
+  <p>{props.intro}</p>
+  <ul>
+    {props.links.map((link) => (
+      <li>
+        <a href={link.href}>{link.label}</a>
+      </li>
+    ))}
+  </ul>
+</Layout>

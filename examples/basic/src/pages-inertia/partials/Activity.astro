@@ -1,0 +1,11 @@
+---
+import { definePage } from "astro-inertia";
+
+const { props } = definePage<"Users/Index">(Astro);
+---
+
+<ul data-testid="activity">
+  {props.activity?.map((item) => (
+    <li>{item}</li>
+  ))}
+</ul>

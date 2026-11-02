@@ -1,0 +1,39 @@
+---
+/**
+ * The server island behind <Deferred>. Its props travel (encrypted) in the
+ * island URL, so they stay small: the page URL, component, version, keys
+ * and the component names to render.
+ */
+import { loadPartial, resolveComponent } from "astro-inertia/runtime";
+
+interface Props {
+  url: string;
+  component: string;
+  version: string | null;
+  keys: string[];
+  render: string;
+  error?: string | undefined;
+}
+
+const { url, component, version, keys, render, error } = Astro.props;
+
+let Component;
+let page;
+try {
+  page = await loadPartial(Astro, { url, component, version }, keys);
+  const missing = keys.filter((k) => !(k in page!.props) || page!.rescuedProps?.includes(k));
+  if (missing.length > 0) {
+    throw new Error(`astro-inertia: deferred props missing from the response: ${missing.join(", ")}`);
+  }
+  Component = await resolveComponent(render);
+} catch (failure) {
+  console.error(failure);
+  Component = error ? await resolveComponent(error) : undefined;
+}
+---
+
+{Component ? (
+  <Component {...page?.props} page={page} />
+) : (
+  <p data-inertia-deferred-error>Could not load {keys.join(", ")}.</p>
+)}

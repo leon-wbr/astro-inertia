@@ -1,0 +1,14 @@
+{
+  "name": "mock-inertia-server",
+  "private": true,
+  "type": "module",
+  "exports": "./server.ts",
+  "scripts": {
+    "start": "node server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
+  }
+}

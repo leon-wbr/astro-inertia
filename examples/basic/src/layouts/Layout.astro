@@ -1,0 +1,58 @@
+---
+import { ClientRouter } from "astro:transitions";
+import type { AnyPage } from "astro-inertia";
+import InertiaPageData from "astro-inertia/InertiaPageData.astro";
+
+interface Props {
+  title: string;
+  page: AnyPage;
+}
+
+const { title, page } = Astro.props;
+const appName = (page.props as { app?: { name?: string } }).app?.name ?? "App";
+const nav = [
+  { href: "/", label: "Home" },
+  { href: "/about", label: "About" },
+  { href: "/users", label: "Users" },
+  { href: "/contact", label: "Contact" },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · {appName}</title>
+    <ClientRouter />
+  </head>
+  <body data-component={page.component} data-version={page.version}>
+    <nav>
+      {nav.map((link) => (
+        <a href={link.href} aria-current={page.url === link.href ? "page" : undefined}>
+          {link.label}
+        </a>
+      ))}
+      <a href="/about" data-astro-reload data-testid="plain-link">
+        About (full load)
+      </a>
+    </nav>
+    <main transition:animate="fade">
+      <slot />
+    </main>
+    <InertiaPageData page={page} />
+  </body>
+</html>
+
+<style>
+  nav {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid #ddd;
+  }
+  main {
+    padding: 1rem;
+    font-family: system-ui, sans-serif;
+  }
+</style>

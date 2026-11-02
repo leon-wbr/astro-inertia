@@ -1,0 +1,26 @@
+---
+import { definePage } from "astro-inertia";
+import Deferred from "astro-inertia/Deferred.astro";
+import UserFilter from "../../components/UserFilter";
+import Layout from "../../layouts/Layout.astro";
+
+const { props, page } = definePage<"Users/Index">(Astro);
+---
+
+<Layout title={props.title} page={page}>
+  <h1>{props.title}</h1>
+  <UserFilter client:load users={props.users} />
+
+  <section aria-label="Statistics">
+    <Deferred page={page} data="default" render="partials/Stats">
+      <p slot="fallback" data-testid="stats-loading">
+        Loading statistics…
+      </p>
+    </Deferred>
+  </section>
+  <aside aria-label="Activity">
+    <Deferred page={page} data="sidebar" render="partials/Activity">
+      <p slot="fallback">Loading activity…</p>
+    </Deferred>
+  </aside>
+</Layout>

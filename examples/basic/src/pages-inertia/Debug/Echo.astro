@@ -1,0 +1,7 @@
+---
+import { definePage } from "astro-inertia";
+
+const { props } = definePage<"Debug/Echo">(Astro);
+---
+
+<pre id="echo">{JSON.stringify(props.headers, null, 2)}</pre>

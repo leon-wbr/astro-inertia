@@ -1,0 +1,39 @@
+---
+/**
+ * Deferred props, loaded without blocking the first paint:
+ *
+ *   <Deferred page={page} data="default" render="Dashboard/Stats">
+ *     <p slot="fallback">Loading…</p>
+ *   </Deferred>
+ *
+ * The first response carries the fallback. The browser then fetches a
+ * server island, which makes one Inertia partial reload for the keys and
+ * renders `render` (a component name, resolved like page components) with
+ * the loaded props. `error` names a component to render when that fails.
+ */
+import { deferredKeys, type AnyPage } from "astro-inertia";
+import DeferredIsland from "./DeferredIsland.astro";
+
+interface Props {
+  page: Pick<AnyPage, "url" | "component" | "version" | "deferredProps">;
+  /** A deferred group name, a prop key, or a list of either. */
+  data: string | string[];
+  render: string;
+  error?: string;
+}
+
+const { page, data, render, error } = Astro.props;
+const keys = deferredKeys(page, data);
+---
+
+<DeferredIsland
+  server:defer
+  url={page.url}
+  component={page.component}
+  version={page.version}
+  keys={keys}
+  render={render}
+  error={error}
+>
+  <slot name="fallback" slot="fallback" />
+</DeferredIsland>

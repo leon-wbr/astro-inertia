@@ -1,0 +1,36 @@
+/**
+ * Runtime entry, imported by the injected route and the components. It
+ * wires the build-time options from the virtual module into the handler.
+ */
+import { components, options, runtime } from "virtual:astro-inertia/config";
+import { fetchPartial, handle, type AstroLike, type HandleResult, type HandlerDeps } from "./handler.js";
+import type { Page } from "./protocol.js";
+import { createResolver } from "./resolver.js";
+
+const resolver = createResolver(components, options.pagesDir, runtime.resolve);
+
+export const deps: HandlerDeps = { options, runtime, resolver };
+
+function astroLike(astro: { request: Request; url: URL; clientAddress?: string }): AstroLike {
+  let clientAddress: string | undefined;
+  try {
+    clientAddress = astro.clientAddress;
+  } catch {
+    clientAddress = undefined;
+  }
+  return { request: astro.request, url: astro.url, clientAddress };
+}
+
+export function handleRequest(astro: { request: Request; url: URL; clientAddress?: string }): Promise<HandleResult> {
+  return handle(astroLike(astro), deps);
+}
+
+export function loadPartial(
+  astro: { request: Request; url: URL; clientAddress?: string },
+  page: { url: string; component: string; version?: string | null },
+  keys: string[],
+): Promise<Page> {
+  return fetchPartial(astroLike(astro), deps, page, keys);
+}
+
+export const resolveComponent = (name: string) => resolver.resolve(name);

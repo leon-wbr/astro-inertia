@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Mock Inertia server pages",
+  "type": "object",
+  "$defs": {
+    "Link": {
+      "type": "object",
+      "properties": { "href": { "type": "string" }, "label": { "type": "string" } },
+      "required": ["href", "label"],
+      "additionalProperties": false
+    },
+    "User": {
+      "type": "object",
+      "properties": { "id": { "type": "integer" }, "name": { "type": "string" } },
+      "required": ["id", "name"],
+      "additionalProperties": false
+    },
+    "Shared": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "type": "object",
+          "properties": { "name": { "type": "string" } },
+          "required": ["name"],
+          "additionalProperties": false
+        },
+        "flash": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "success": { "type": "string" } },
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["app", "flash"]
+    }
+  },
+  "properties": {
+    "Home": {
+      "allOf": [{ "$ref": "#/$defs/Shared" }],
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "intro": { "type": "string" },
+        "links": { "type": "array", "items": { "$ref": "#/$defs/Link" } }
+      },
+      "required": ["title", "intro", "links"]
+    },
+    "About": {
+      "allOf": [{ "$ref": "#/$defs/Shared" }],
+      "type": "object",
+      "properties": { "title": { "type": "string" }, "body": { "type": "string" } },
+      "required": ["title", "body"]
+    },
+    "Users/Index": {
+      "allOf": [{ "$ref": "#/$defs/Shared" }],
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "users": { "type": "array", "items": { "$ref": "#/$defs/User" } },
+        "stats": {
+          "description": "Deferred (group default).",
+          "type": "object",
+          "properties": { "total": { "type": "integer" }, "active": { "type": "integer" } },
+          "required": ["total", "active"]
+        },
+        "activity": { "description": "Deferred (group sidebar).", "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["title", "users"]
+    },
+    "Contact/Form": {
+      "allOf": [{ "$ref": "#/$defs/Shared" }],
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "csrfToken": { "type": "string" },
+        "old": {
+          "type": "object",
+          "properties": { "name": { "type": "string" }, "email": { "type": "string" } }
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": { "name": { "type": "string" }, "email": { "type": "string" } },
+            "required": ["name", "email"]
+          }
+        }
+      },
+      "required": ["title", "csrfToken", "old", "messages"]
+    },
+    "Error": {
+      "type": "object",
+      "properties": { "status": { "type": "integer" }, "message": { "type": "string" } },
+      "required": ["status", "message"]
+    },
+    "Debug/Echo": {
+      "type": "object",
+      "properties": {
+        "headers": { "type": "object", "additionalProperties": { "type": "string" } }
+      },
+      "required": ["headers"]
+    }
+  }
+}
