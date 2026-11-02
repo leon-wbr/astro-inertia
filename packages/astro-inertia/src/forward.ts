@@ -61,7 +61,10 @@ export function buildBackendRequest(
   ctx: ForwardContext,
   options: Pick<ResolvedOptions, "forwardHeaders" | "timeout">,
 ): Request {
-  const method = (ctx.method ?? ctx.request.method).toUpperCase();
+  // HEAD is sent as GET: the page object is needed to render headers, and
+  // the server drops the body of the answer to HEAD anyway.
+  const incoming = (ctx.method ?? ctx.request.method).toUpperCase();
+  const method = incoming === "HEAD" ? "GET" : incoming;
   const target = backendUrl(ctx.backend, ctx.path ?? ctx.url.pathname + ctx.url.search);
   const hasBody = method !== "GET" && method !== "HEAD" && ctx.request.body !== null;
   return new Request(target, {

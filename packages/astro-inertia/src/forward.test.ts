@@ -137,6 +137,14 @@ describe("buildBackendRequest", () => {
     expect(await request.text()).toBe("name=Ada");
   });
 
+  it("sends HEAD as GET", () => {
+    const request = buildBackendRequest(
+      { request: incoming({ method: "HEAD" }), url: publicUrl, backend, version: "v1" },
+      options,
+    );
+    expect(request.method).toBe("GET");
+  });
+
   it("uses an explicit path and method", () => {
     const request = buildBackendRequest(
       {
