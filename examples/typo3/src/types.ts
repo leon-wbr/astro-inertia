@@ -19,6 +19,8 @@ export interface Language {
 export interface SharedProps {
   site: { title: string; home: string; language: string; languages: Language[] };
   navigation: NavItem[];
+  /** Shared as a once prop; astro-inertia always does full page loads, so it is always there. */
+  labels: { footer: string; loadedAt: string };
   title: string;
   contentElements: ContentElement[];
 }
