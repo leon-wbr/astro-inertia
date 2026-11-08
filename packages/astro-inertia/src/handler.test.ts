@@ -73,6 +73,21 @@ describe("handle", () => {
     if (result.kind === "render") expect(result.headers.get(MISMATCH_HEADER)).toBe("2");
   });
 
+  it("warns once per server version on a mismatch", async () => {
+    const d = deps(strictServer([]));
+    await handle(astro(), d);
+    await handle(astro(), d);
+    expect(d.log?.warn).toHaveBeenCalledTimes(1);
+    expect(d.log?.warn).toHaveBeenCalledWith(expect.stringContaining('server "2"'));
+  });
+
+  it("keeps the warn-once state per deps, not per process", async () => {
+    await handle(astro(), deps(strictServer([])));
+    const fresh = deps(strictServer([]));
+    await handle(astro(), fresh);
+    expect(fresh.log?.warn).toHaveBeenCalledTimes(1);
+  });
+
   it("adopts the server's version silently when none is configured", async () => {
     const seen: (string | null)[] = [];
     const d = deps(strictServer(seen));

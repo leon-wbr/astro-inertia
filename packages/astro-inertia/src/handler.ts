@@ -25,6 +25,8 @@ export interface HandlerDeps {
   fetch?: typeof fetch;
   env?: Record<string, string | undefined>;
   log?: Pick<Console, "warn" | "error">;
+  /** Server versions already warned about; one per process in production. */
+  warned?: Set<string>;
 }
 
 export type HandleResult =
@@ -65,7 +67,14 @@ export function backendFor(request: Request, deps: Pick<HandlerDeps, "options" |
   return backend;
 }
 
-const warnedVersions = new Set<string>();
+function warnOnce(deps: HandlerDeps, clientVersion: string | undefined, serverVersion: string): void {
+  const warned = (deps.warned ??= new Set());
+  if (warned.has(serverVersion)) return;
+  warned.add(serverVersion);
+  (deps.log ?? console).warn(
+    `astro-inertia: version mismatch (frontend "${clientVersion}", server "${serverVersion}"); rendering with the server's version.`,
+  );
+}
 
 /** Sends one request to the backend and sorts the answer. */
 export async function fetchBackend(
@@ -174,12 +183,7 @@ async function handleInner(astro: AstroLike, deps: HandlerDeps): Promise<HandleR
         ),
       };
     }
-    if (!warnedVersions.has(serverVersion)) {
-      warnedVersions.add(serverVersion);
-      (deps.log ?? console).warn(
-        `astro-inertia: version mismatch (frontend "${version}", server "${serverVersion}"); rendering with the server's version.`,
-      );
-    }
+    warnOnce(deps, version, serverVersion);
     mismatch = serverVersion || "unknown";
     result = await fetchBackend(astro, deps, { version: serverVersion || undefined });
     if (result.kind === "version-mismatch") {
