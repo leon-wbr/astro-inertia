@@ -1,21 +1,67 @@
+# Synced from the platform repo (templates/ts-lib). Change it there, then sync.
 name: Release
 
+# release-please keeps one release PR open (version bump + CHANGELOG.md), built from the
+# conventional squash commits on main. Merging it tags vX.Y.Z on main and creates the
+# GitHub release; the publish job then waits for approval in the "npm" environment and
+# publishes with npm trusted publishing (OIDC, provenance, no token).
+#
+# Keep the file name: the npm trusted publisher entry is bound to release.yml.
+# A manual run (workflow_dispatch) publishes nothing: it proves the trusted publisher
+# entry with a dry run.
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  publish:
+  release-please:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    outputs:
+      release_created: ${{ steps.rp.outputs['packages/astro-inertia--release_created'] }}
+      tag_name: ${{ steps.rp.outputs['packages/astro-inertia--tag_name'] }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      # The release PR is opened with GITHUB_TOKEN, so no checks run on it; merge it with
+      # the admin bypass of the main ruleset.
+      - id: rp
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    needs: release-please
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' ||
+      needs.release-please.outputs.release_created == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name || github.ref }}
+          fetch-depth: 0
+      - name: Release commit is on main
+        run: git merge-base --is-ancestor HEAD origin/main
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           registry-url: https://registry.npmjs.org
@@ -23,14 +69,6 @@ jobs:
       # Trusted publishing needs npm >= 11.5.1.
       - run: npm install -g npm@11.6.2
       - run: pnpm install --frozen-lockfile
-      - name: Check tag matches package.json version
-        if: github.event_name == 'push'
-        run: |
-          expected="v$(node -p "require('./packages/astro-inertia/package.json').version")"
-          if [ "$expected" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match package.json version ($expected)"
-            exit 1
-          fi
       - run: pnpm --filter astro-inertia build
       - run: pnpm --filter astro-inertia typecheck
       - run: pnpm test
@@ -40,20 +78,15 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         working-directory: packages/astro-inertia
         run: |
-          npm publish --dry-run --loglevel verbose 2>&1 | tee dry-run.log || true
-          if grep -q 'Successfully retrieved and set token' dry-run.log; then
+          npm publish --dry-run --loglevel verbose 2>&1 | tee "$RUNNER_TEMP/dry-run.log" || true
+          if grep -q 'Successfully retrieved and set token' "$RUNNER_TEMP/dry-run.log"; then
             echo "Trusted publishing authenticated."
           else
-            echo "::error::OIDC exchange did not return a token. Check the npm trusted publisher entry for this repository and workflow file."
-            grep -E 'oidc|requires you to be logged in' dry-run.log || true
+            echo "::error::OIDC exchange did not return a token. Check the npm trusted publisher entry (repository, release.yml, environment npm)."
+            grep -E 'oidc|requires you to be logged in' "$RUNNER_TEMP/dry-run.log" || true
             exit 1
           fi
       - name: Publish
         if: github.event_name == 'push'
         working-directory: packages/astro-inertia
         run: npm publish
-      - name: Create GitHub release
-        if: github.event_name == 'push'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes
