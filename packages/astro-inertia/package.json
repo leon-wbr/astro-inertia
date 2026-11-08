@@ -1,14 +1,14 @@
 {
   "name": "astro-inertia",
   "version": "0.1.0",
-  "description": "Astro as a server-side Inertia client: render any Inertia v3 server's page objects with Astro components.",
+  "description": "Render any Inertia v3 server's pages with Astro components, on the server. Works with Laravel or any other Inertia backend. Experimental.",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/leon-wbr/astro-inertia.git",
     "directory": "packages/astro-inertia"
   },
-  "homepage": "https://github.com/leon-wbr/astro-inertia#readme",
+  "homepage": "https://www.npmjs.com/package/astro-inertia",
   "bugs": "https://github.com/leon-wbr/astro-inertia/issues",
   "type": "module",
   "keywords": [
@@ -17,8 +17,9 @@
     "withastro",
     "inertia",
     "inertiajs",
-    "typo3",
-    "laravel"
+    "laravel",
+    "ssr",
+    "server-side-rendering"
   ],
   "exports": {
     ".": {
@@ -47,7 +48,13 @@
     "dist",
     "components"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
+    "prepublishOnly": "npm run build",
+    "prepack": "cp ../../README.md ../../LICENSE .",
+    "postpack": "rm -f README.md LICENSE",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
