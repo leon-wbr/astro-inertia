@@ -1,7 +1,7 @@
 # astro-inertia
 
 > [!WARNING]
-> **Highly experimental, work in progress.** The API, configuration and behaviour can change in any release, without notice or a migration path. It isn't published to npm yet. Don't use it in production.
+> **Highly experimental, work in progress.** The API, configuration and behaviour can change in any release, without notice or a migration path. Don't use it in production.
 
 Astro as an [Inertia](https://inertiajs.com) client, rendering on the server.
 
@@ -18,7 +18,7 @@ The design and its trade-offs are in [docs/design.md](docs/design.md).
 
 ## Install
 
-Requires Astro 7 with an SSR adapter, for example `@astrojs/node`.
+Requires Node 22.23.4 or later and Astro 7 with an SSR adapter, for example `@astrojs/node`.
 
 ```sh
 pnpm add astro-inertia @astrojs/node
@@ -171,13 +171,16 @@ To run it, start the adapter's own example (`ddev start && ddev setup-example` i
 INERTIA_BACKEND=https://inertia-typo3.ddev.site pnpm --filter example-typo3 dev
 ```
 
-The TYPO3 e2e tests bring up their own fixture, a clone of the adapter's `main` in `.cache/`, as the DDEV project `astro-inertia-e2e`:
+The TYPO3 e2e tests bring up their own fixture, a clone of the adapter's `main` in `.cache/`, as the DDEV project `astro-inertia-e2e`. They need Docker and [DDEV](https://ddev.com). The tests run the built example, so build first:
 
 ```sh
+pnpm build
 pnpm typo3:up        # clone to .cache/, ddev start, setup, build the assets
 pnpm test:e2e:typo3
 pnpm typo3:down      # ddev stop
 ```
+
+To do all of that in one go, run `pnpm verify:typo3` after `pnpm build`. It starts DDEV, runs the tests and always stops DDEV again.
 
 The TYPO3 site's `base` is `/`, so it answers for whatever host Astro forwards. With an absolute base, put the public host there and add Astro to TYPO3's `reverseProxyIP`.
 
@@ -206,13 +209,21 @@ const { props } = definePage<{ users: { id: number; name: string }[] }>(Astro);
 
 Share the CSRF token as a prop, for example `'csrf_token' => csrf_token()` in `HandleInertiaRequests::share()`, because plain forms post `_token`. Trust Astro as a proxy (`TrustProxies`) so Laravel builds URLs for the public host. Laravel's version is the hash of the Vite manifest, so set `version` to the same value.
 
-## Development
+## Getting help
+
+Questions and bug reports go to [GitHub Issues](https://github.com/leon-wbr/astro-inertia/issues). For a bug, say which Astro version and which Inertia server you use.
+
+## Development and contributing
+
+Contributions are welcome. Open an issue first for anything larger than a small fix, then send a pull request. Run `pnpm verify` before you do.
+
+You need Node 26 and pnpm (see [Versions](#versions)). The full `pnpm verify` also needs Docker and [DDEV](https://ddev.com), because it runs the TYPO3 e2e tests.
 
 ```sh
 pnpm install
 pnpm verify          # format, lint, build, typecheck, unit tests, e2e (mock + TYPO3)
 pnpm test            # unit tests (Vitest)
-pnpm test:e2e:mock   # Playwright against the mock Inertia server
+pnpm build && pnpm test:e2e:mock   # Playwright against the mock Inertia server
 ```
 
 The layout is:
