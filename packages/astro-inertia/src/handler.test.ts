@@ -8,6 +8,7 @@ import {
   type HandlerDeps,
 } from "./handler.js";
 import { resolveOptions, type RuntimeOptions } from "./options.js";
+import { InvalidPageError } from "./protocol.js";
 import { createResolver } from "./resolver.js";
 
 const Home = () => "home";
@@ -175,6 +176,47 @@ describe("handle", () => {
       expect(text).toContain("no component &#34;Nope&#34;");
       expect(text).toContain("Home");
     }
+  });
+
+  it("answers 502 when the backend sends an invalid page", async () => {
+    const d = deps(async () => page({ props: "nope" }));
+    const result = await handle(astro(), d);
+    expect(result.kind).toBe("response");
+    if (result.kind === "response") {
+      expect(result.response.status).toBe(502);
+      expect(await result.response.text()).toContain("Invalid Inertia response");
+    }
+  });
+
+  it("answers 502 for any InvalidPageError, whatever its name property says", async () => {
+    class StricterPageError extends InvalidPageError {
+      override name = "StricterPageError";
+    }
+    const d = deps(
+      async () => page(),
+      {},
+      {
+        transformPage: () => {
+          throw new StricterPageError("rejected by transformPage");
+        },
+      },
+    );
+    const result = await handle(astro(), d);
+    expect(result.kind === "response" && result.response.status).toBe(502);
+  });
+
+  it("does not turn a foreign error that is merely named InvalidPageError into a 502", async () => {
+    const foreign = Object.assign(new Error("boom"), { name: "InvalidPageError" });
+    const d = deps(
+      async () => page(),
+      {},
+      {
+        transformPage: () => {
+          throw foreign;
+        },
+      },
+    );
+    await expect(handle(astro(), d)).rejects.toBe(foreign);
   });
 
   it("passes redirects through with cookies", async () => {

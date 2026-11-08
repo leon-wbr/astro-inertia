@@ -7,7 +7,7 @@ import {
   type BackendResult,
 } from "./forward.js";
 import type { AstroComponent, ResolvedOptions, RuntimeOptions } from "./options.js";
-import { Header, type Page } from "./protocol.js";
+import { Header, InvalidPageError, type Page } from "./protocol.js";
 import { ComponentNotFoundError, type Resolver } from "./resolver.js";
 
 export const MISMATCH_HEADER = "x-astro-inertia-version-mismatch";
@@ -141,7 +141,7 @@ export async function handle(astro: AstroLike, deps: HandlerDeps): Promise<Handl
         response: errorResponse(error.status, error.status === 504 ? "Gateway Timeout" : "Bad Gateway", error.message),
       };
     }
-    if (error instanceof Error && error.name === "InvalidPageError") {
+    if (error instanceof InvalidPageError) {
       return { kind: "response", response: errorResponse(502, "Invalid Inertia response", error.message) };
     }
     throw error;
