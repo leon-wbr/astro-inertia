@@ -66,4 +66,36 @@ describe("deferredKeys", () => {
     expect(deferredKeys(page, "stats, activity")).toEqual(["stats", "activity"]);
     expect(deferredKeys({}, "x")).toEqual(["x"]);
   });
+  it("drops empty entries of a comma list", () => {
+    expect(deferredKeys({}, "a,, b ,")).toEqual(["a", "b"]);
+  });
+});
+
+describe("parsePage edge cases", () => {
+  const base = { component: "A", props: {}, url: "/" };
+
+  it("throws errors that name themselves InvalidPageError", () => {
+    expect(() => parsePage(null)).toThrow(expect.objectContaining({ name: "InvalidPageError" }));
+  });
+
+  it.each([
+    ["a string", { ...base, props: "x" }],
+    ["null", { ...base, props: null }],
+  ])("rejects props that are %s", (_, input) => {
+    expect(() => parsePage(input)).toThrow(/props/);
+  });
+
+  it("rejects a string array with a non-string among strings", () => {
+    expect(() => parsePage({ ...base, mergeProps: ["a", 1] })).toThrow(/mergeProps/);
+  });
+
+  it("drops string-array fields that are null", () => {
+    const page = parsePage({ ...base, mergeProps: null, rescuedProps: null });
+    expect("mergeProps" in page).toBe(false);
+    expect("rescuedProps" in page).toBe(false);
+  });
+
+  it("rejects deferredProps that is not an object", () => {
+    expect(() => parsePage({ ...base, deferredProps: "stats" })).toThrow("page.deferredProps must be an object");
+  });
 });
