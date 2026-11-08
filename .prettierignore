@@ -6,3 +6,4 @@ test-results
 playwright-report
 **/inertia.d.ts
 .cache
+**/CHANGELOG.md
