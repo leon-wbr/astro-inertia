@@ -2,7 +2,7 @@ import { Header, parsePage, type Page } from "./protocol.js";
 import type { ResolvedOptions } from "./options.js";
 import { trimTrailingSlashes } from "./paths.js";
 
-export interface ForwardContext {
+interface ForwardContext {
   /** The incoming request (to Astro). */
   request: Request;
   /** The public URL of the request; usually Astro.url. */

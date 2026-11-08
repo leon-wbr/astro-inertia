@@ -33,7 +33,7 @@ export type HandleResult =
   | { kind: "response"; response: Response }
   | { kind: "render"; Component: AstroComponent; page: Page; status: number; headers: Headers };
 
-export class BackendError extends Error {
+class BackendError extends Error {
   override name = "BackendError";
   constructor(
     message: string,
@@ -48,7 +48,7 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-export function errorResponse(status: number, title: string, detail: string): Response {
+function errorResponse(status: number, title: string, detail: string): Response {
   const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head><body><h1>${escapeHtml(title)}</h1><pre>${escapeHtml(detail)}</pre></body></html>`;
   return new Response(body, {
     status,
@@ -56,7 +56,7 @@ export function errorResponse(status: number, title: string, detail: string): Re
   });
 }
 
-export function backendFor(request: Request, deps: Pick<HandlerDeps, "options" | "runtime" | "env">): string | URL {
+function backendFor(request: Request, deps: Pick<HandlerDeps, "options" | "runtime" | "env">): string | URL {
   const backend = deps.runtime.backend?.(request) ?? deps.options.backend ?? (deps.env ?? process.env).INERTIA_BACKEND;
   if (!backend) {
     throw new BackendError(
@@ -77,7 +77,7 @@ function warnOnce(deps: HandlerDeps, clientVersion: string | undefined, serverVe
 }
 
 /** Sends one request to the backend and sorts the answer. */
-export async function fetchBackend(
+async function fetchBackend(
   astro: AstroLike,
   deps: HandlerDeps,
   init: { path?: string; headers?: Record<string, string>; method?: string; version?: string | undefined },

@@ -9,6 +9,7 @@
   "scripts": {
     "build": "pnpm --filter astro-inertia build && pnpm --filter './examples/*' build",
     "lint": "eslint .",
+    "knip": "knip",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --parallel typecheck",
@@ -28,6 +29,7 @@
     "eslint": "^10.14.0",
     "eslint-plugin-astro": "^3.2.1",
     "globals": "^17.14.0",
+    "knip": "^6.44.2",
     "prettier": "^3.9.10",
     "prettier-plugin-astro": "^1.1.2",
     "typescript": "~6.0.3",
