@@ -16,7 +16,9 @@
     "test:e2e": "pnpm test:e2e:mock && pnpm verify:typo3",
     "test:e2e:mock": "pnpm --filter e2e test:mock",
     "test:e2e:typo3": "pnpm --filter e2e test:typo3",
-    "verify": "pnpm format:check && pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e",
+    "check": "pnpm format:check && pnpm lint && pnpm --filter astro-inertia build && pnpm typecheck && pnpm --filter astro-inertia test:coverage",
+    "ci": "scripts/ci.sh",
+    "verify": "pnpm check && pnpm build && pnpm test:e2e",
     "typo3:up": "scripts/typo3.sh up",
     "typo3:down": "scripts/typo3.sh down",
     "verify:typo3": "scripts/verify-typo3.sh"

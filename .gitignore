@@ -10,3 +10,4 @@ playwright-report
 .cache
 packages/astro-inertia/README.md
 packages/astro-inertia/LICENSE
+coverage
