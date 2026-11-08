@@ -3,7 +3,16 @@
  * wires the build-time options from the virtual module into the handler.
  */
 import { components, options, runtime } from "virtual:astro-inertia/config";
-import { fetchPartial, handle, type AstroLike, type HandleResult, type HandlerDeps } from "./handler.js";
+import {
+  fetchPartial,
+  handle,
+  loadDeferred,
+  type AstroLike,
+  type DeferredRequest,
+  type DeferredResult,
+  type HandleResult,
+  type HandlerDeps,
+} from "./handler.js";
 import type { Page } from "./protocol.js";
 import { createResolver } from "./resolver.js";
 
@@ -31,6 +40,13 @@ export function loadPartial(
   keys: string[],
 ): Promise<Page> {
   return fetchPartial(astroLike(astro), deps, page, keys);
+}
+
+export function loadDeferredIsland(
+  astro: { request: Request; url: URL; clientAddress?: string },
+  req: DeferredRequest,
+): Promise<DeferredResult> {
+  return loadDeferred(astroLike(astro), deps, req);
 }
 
 export const resolveComponent = (name: string) => resolver.resolve(name);

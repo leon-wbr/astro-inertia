@@ -4,7 +4,7 @@
  * island URL, so they stay small: the page URL, component, version, keys
  * and the component names to render.
  */
-import { loadPartial, resolveComponent } from "astro-inertia/runtime";
+import { loadDeferredIsland } from "astro-inertia/runtime";
 
 interface Props {
   url: string;
@@ -17,23 +17,9 @@ interface Props {
 
 const { url, component, version, keys, render, error } = Astro.props;
 
-let Component;
-let page;
-try {
-  page = await loadPartial(Astro, { url, component, version }, keys);
-  const missing = keys.filter((k) => !(k in page!.props) || page!.rescuedProps?.includes(k));
-  if (missing.length > 0) {
-    throw new Error(`astro-inertia: deferred props missing from the response: ${missing.join(", ")}`);
-  }
-  Component = await resolveComponent(render);
-} catch (failure) {
-  console.error(failure);
-  Component = error ? await resolveComponent(error) : undefined;
-}
+const result = await loadDeferredIsland(Astro, { page: { url, component, version }, keys, render, error });
+const Component = result.Component;
+const props = result.kind === "loaded" ? { ...result.page.props, page: result.page } : {};
 ---
 
-{Component ? (
-  <Component {...page?.props} page={page} />
-) : (
-  <p data-inertia-deferred-error>Could not load {keys.join(", ")}.</p>
-)}
+{Component ? <Component {...props} /> : <p data-inertia-deferred-error>Could not load {keys.join(", ")}.</p>}
