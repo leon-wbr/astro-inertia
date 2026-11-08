@@ -1,3 +1,4 @@
+import { trimSlashes } from "./paths.js";
 import type { Page } from "./protocol.js";
 
 export type VersionMismatchAction = "reload" | "error";
@@ -117,7 +118,7 @@ export function resolveOptions(options: InertiaOptions = {}): ResolvedOptions {
     ]),
     responseHeaders: lower(options.responseHeaders ?? DEFAULT_RESPONSE_HEADERS),
     cacheTagHeaders: lower(options.cacheTagHeaders ?? DEFAULT_CACHE_TAG_HEADERS),
-    pagesDir: (options.pagesDir ?? "src/pages-inertia").replace(/^\.?\/+|\/+$/g, ""),
+    pagesDir: trimSlashes(options.pagesDir ?? "src/pages-inertia"),
     route: options.route ?? "/[...inertia]",
   };
 }
