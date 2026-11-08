@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const MOCK_PORT = 4610;
-const ASTRO_PORT = 4611;
+// Overridable so parallel worktrees don't collide on the same ports.
+const MOCK_PORT = Number(process.env.MOCK_PORT ?? 4610);
+const ASTRO_PORT = Number(process.env.ASTRO_PORT ?? 4611);
 
 export default defineConfig({
   testDir: "mock",
