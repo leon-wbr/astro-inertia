@@ -105,14 +105,34 @@ describe("handle", () => {
   });
 
   it("answers 504 when the backend times out", async () => {
-    const d = deps(
-      (request) =>
-        new Promise((_, reject) => {
-          request.signal.addEventListener("abort", () => reject(request.signal.reason));
-        }),
-    );
+    // Hand the request a signal we abort ourselves, instead of waiting for a
+    // real AbortSignal.timeout(50) to fire.
+    const timeout = new AbortController();
+    const spy = vi.spyOn(AbortSignal, "timeout").mockReturnValue(timeout.signal);
+    try {
+      const d = deps(
+        (request) =>
+          new Promise((_, reject) => {
+            request.signal.addEventListener("abort", () => reject(request.signal.reason));
+            timeout.abort(new DOMException("The operation timed out.", "TimeoutError"));
+          }),
+      );
+      const result = await handle(astro(), d);
+      expect(spy).toHaveBeenCalledWith(50);
+      expect(result.kind === "response" && result.response.status).toBe(504);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("passes a non-Inertia backend answer through", async () => {
+    const d = deps(async () => new Response("plain text", { status: 200, headers: { "content-type": "text/plain" } }));
     const result = await handle(astro(), d);
-    expect(result.kind === "response" && result.response.status).toBe(504);
+    expect(result.kind).toBe("response");
+    if (result.kind === "response") {
+      expect(result.response.status).toBe(200);
+      expect(await result.response.text()).toBe("plain text");
+    }
   });
 
   it("answers 502 when the backend is unreachable", async () => {
@@ -190,5 +210,39 @@ describe("fetchPartial", () => {
     expect(seen?.headers.get("x-inertia-partial-component")).toBe("Users/Index");
     expect(seen?.headers.get("x-inertia-partial-data")).toBe("stats,chart");
     expect(seen?.headers.get("x-inertia-version")).toBe("2");
+  });
+
+  const mismatch = () => new Response(null, { status: 409, headers: { "x-inertia-version": "3" } });
+  const users = { url: "/users", component: "Users/Index", version: "2" };
+
+  it("retries without a version when the server reports a mismatch", async () => {
+    const seen: (Request | undefined)[] = [];
+    const d = deps(async (request) => {
+      seen.push(request);
+      return seen.length === 1 ? mismatch() : page({ props: { stats: 1 } });
+    });
+    const result = await fetchPartial(astro(), d, users, ["stats"]);
+    expect(result.props).toMatchObject({ stats: 1 });
+    expect(seen.map((r) => r?.headers.get("x-inertia-version"))).toEqual(["2", null]);
+    expect(seen[1]?.headers.get("x-inertia-partial-component")).toBe("Users/Index");
+    expect(seen[1]?.headers.get("x-inertia-partial-data")).toBe("stats");
+  });
+
+  it("fails with 502 when the retry is a mismatch again", async () => {
+    const d = deps(async () => mismatch());
+    await expect(fetchPartial(astro(), d, users, ["stats"])).rejects.toMatchObject({
+      status: 502,
+      message: expect.stringContaining("partial reload of /users"),
+    });
+    expect(d.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails with 502 when the backend answers with something other than a page", async () => {
+    const d = deps(async () => new Response("plain text", { headers: { "content-type": "text/plain" } }));
+    await expect(fetchPartial(astro(), d, users, ["stats"])).rejects.toMatchObject({
+      status: 502,
+      message: expect.stringContaining("partial reload of /users"),
+    });
+    expect(d.fetch).toHaveBeenCalledTimes(1);
   });
 });
