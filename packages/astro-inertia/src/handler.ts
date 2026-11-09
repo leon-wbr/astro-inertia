@@ -148,54 +148,31 @@ export async function handle(astro: AstroLike, deps: HandlerDeps): Promise<Handl
   }
 }
 
-async function handleInner(astro: AstroLike, deps: HandlerDeps): Promise<HandleResult> {
-  const backend = backendFor(astro.request, deps);
-  const version = deps.runtime.version?.(astro.request) ?? deps.options.version;
-  let result = await fetchBackend(astro, deps, { version });
-  let mismatch: string | undefined;
+type SettledResult = Exclude<BackendResult, { kind: "version-mismatch" }>;
 
-  if (result.kind === "version-mismatch" && version === undefined) {
-    // No version configured: this frontend isn't tied to the server's assets,
-    // so take the server's version. Servers like inertia-laravel and
-    // inertia-typo3 treat a missing header as a mismatch too.
-    result = await fetchBackend(astro, deps, { version: result.serverVersion });
-    if (result.kind === "version-mismatch") {
-      throw new BackendError("astro-inertia: the server answered 409 to its own version", 502);
-    }
-  }
-
+/** Fetches again with the given version. The server must accept it; a second 409 is a server bug. */
+async function refetch(astro: AstroLike, deps: HandlerDeps, version: string | undefined): Promise<SettledResult> {
+  const result = await fetchBackend(astro, deps, { version });
   if (result.kind === "version-mismatch") {
-    const serverVersion = result.serverVersion;
-    const action =
-      (await deps.runtime.onVersionMismatch?.({
-        request: astro.request,
-        clientVersion: version ?? "",
-        serverVersion,
-      })) ?? deps.options.onVersionMismatch;
-    if (action instanceof Response) return { kind: "response", response: action };
-    if (action === "error") {
-      return {
-        kind: "response",
-        response: errorResponse(
-          502,
-          "Inertia version mismatch",
-          `astro-inertia: this frontend was built for version "${version}", the server is on "${serverVersion}".`,
-        ),
-      };
-    }
-    warnOnce(deps, version, serverVersion);
-    mismatch = serverVersion || "unknown";
-    result = await fetchBackend(astro, deps, { version: serverVersion || undefined });
-    if (result.kind === "version-mismatch") {
-      throw new BackendError("astro-inertia: the server answered 409 to its own version", 502);
-    }
+    throw new BackendError("astro-inertia: the server answered 409 to its own version", 502);
   }
+  return result;
+}
 
+/** Turns a settled backend answer into a response or a component to render. */
+async function renderResult(
+  result: SettledResult,
+  astro: AstroLike,
+  deps: HandlerDeps,
+  mismatch?: string,
+): Promise<HandleResult> {
   switch (result.kind) {
     case "redirect":
       return { kind: "response", response: redirectResponse(result) };
-    case "passthrough":
+    case "passthrough": {
+      const backend = backendFor(astro.request, deps);
       return { kind: "response", response: passthrough(result.response, { backend, url: astro.url }) };
+    }
     case "page": {
       const page = deps.runtime.transformPage
         ? await deps.runtime.transformPage(result.page, astro.request)
@@ -205,7 +182,62 @@ async function handleInner(astro: AstroLike, deps: HandlerDeps): Promise<HandleR
       if (mismatch !== undefined) headers.set(MISMATCH_HEADER, mismatch);
       return { kind: "render", Component, page, status: result.status, headers };
     }
+    default: {
+      const unreachable: never = result;
+      return unreachable;
+    }
   }
+}
+
+/**
+ * The frontend has a version and the server disagrees: the runtime callback
+ * or the `onVersionMismatch` option decides between answering with a
+ * response, failing with 502, or reloading with the server's version.
+ */
+async function handleMismatch(
+  astro: AstroLike,
+  deps: HandlerDeps,
+  clientVersion: string,
+  serverVersion: string,
+): Promise<HandleResult> {
+  const action =
+    (await deps.runtime.onVersionMismatch?.({ request: astro.request, clientVersion, serverVersion })) ??
+    deps.options.onVersionMismatch;
+  if (action instanceof Response) return { kind: "response", response: action };
+  switch (action) {
+    case "error":
+      return {
+        kind: "response",
+        response: errorResponse(
+          502,
+          "Inertia version mismatch",
+          `astro-inertia: this frontend was built for version "${clientVersion}", the server is on "${serverVersion}".`,
+        ),
+      };
+    case "reload": {
+      warnOnce(deps, clientVersion, serverVersion);
+      const result = await refetch(astro, deps, serverVersion || undefined);
+      return renderResult(result, astro, deps, serverVersion || "unknown");
+    }
+    default: {
+      const unreachable: never = action;
+      return unreachable;
+    }
+  }
+}
+
+async function handleInner(astro: AstroLike, deps: HandlerDeps): Promise<HandleResult> {
+  const version = deps.runtime.version?.(astro.request) ?? deps.options.version;
+  const first = await fetchBackend(astro, deps, { version });
+  if (first.kind !== "version-mismatch") return renderResult(first, astro, deps);
+
+  if (version === undefined) {
+    // No version configured: this frontend isn't tied to the server's assets,
+    // so take the server's version. Servers like inertia-laravel and
+    // inertia-typo3 treat a missing header as a mismatch too.
+    return renderResult(await refetch(astro, deps, first.serverVersion), astro, deps);
+  }
+  return handleMismatch(astro, deps, version, first.serverVersion);
 }
 
 /**
