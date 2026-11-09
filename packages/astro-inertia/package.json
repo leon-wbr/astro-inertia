@@ -59,7 +59,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run stryker.config.ts"
   },
   "peerDependencies": {
     "astro": "^7.0.0"
@@ -68,6 +68,7 @@
     "json-schema-to-typescript": "^16.0.0"
   },
   "devDependencies": {
+    "@stryker-mutator/api": "^10.1.1",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/json-schema": "^7.0.15",
