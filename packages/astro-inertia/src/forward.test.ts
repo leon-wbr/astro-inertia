@@ -255,6 +255,55 @@ describe("classifyResponse", () => {
     expect(result).toMatchObject({ kind: "redirect", status: 303, location: "/about#team" });
   });
 
+  it("prefers X-Inertia-Redirect over X-Inertia-Location on a 409", async () => {
+    const result = await classifyResponse(
+      new Response(null, {
+        status: 409,
+        headers: { "x-inertia-redirect": "/target", "x-inertia-location": "https://pay.example.com/checkout" },
+      }),
+      ctx,
+    );
+    expect(result).toMatchObject({ kind: "redirect", status: 303, location: "/target" });
+  });
+
+  it("prefers the version mismatch over a redirect header on a 409", async () => {
+    const result = await classifyResponse(
+      new Response(null, { status: 409, headers: { "x-inertia-version": "v2", "x-inertia-redirect": "/target" } }),
+      ctx,
+    );
+    expect(result).toMatchObject({ kind: "version-mismatch", serverVersion: "v2" });
+  });
+
+  it("redirects a 409 back to the same URL when no version was sent", async () => {
+    const result = await classifyResponse(
+      new Response(null, { status: 409, headers: { "x-inertia-location": "http://typo3.internal/de/ueber-uns?x=1" } }),
+      ctx,
+    );
+    expect(result).toMatchObject({ kind: "redirect", status: 303, location: "/de/ueber-uns?x=1" });
+  });
+
+  it("redirects a 409 back to the same URL after a non-GET request", async () => {
+    const result = await classifyResponse(
+      new Response(null, { status: 409, headers: { "x-inertia-location": "http://typo3.internal/de/ueber-uns?x=1" } }),
+      { ...ctx, method: "POST", sentVersion: "v1" },
+    );
+    expect(result).toMatchObject({ kind: "redirect", status: 303 });
+  });
+
+  it("compares a pre-v3 409 location with the requested path override", async () => {
+    const response = () =>
+      new Response(null, { status: 409, headers: { "x-inertia-location": "http://typo3.internal/users" } });
+    const match = await classifyResponse(response(), { ...ctx, sentVersion: "v1", requestedPath: "/users" });
+    expect(match).toMatchObject({ kind: "version-mismatch", serverVersion: "" });
+    const other = await classifyResponse(response(), { ...ctx, sentVersion: "v1" });
+    expect(other).toMatchObject({ kind: "redirect", location: "/users" });
+  });
+
+  it("falls through a 409 without Inertia headers", async () => {
+    const result = await classifyResponse(new Response("conflict", { status: 409 }), ctx);
+    expect(result.kind).toBe("passthrough");
+  });
+
   it("rejects an invalid page object", async () => {
     await expect(classifyResponse(json({ props: {} }), ctx)).rejects.toThrow(/component/);
   });

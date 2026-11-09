@@ -107,47 +107,47 @@ export function rewriteLocation(location: string, backend: string | URL, publicU
   return resolved.href;
 }
 
+interface ClassifyContext {
+  method: string;
+  backend: string | URL;
+  url: URL;
+  sentVersion?: string | undefined;
+  requestedPath?: string;
+}
+
+/**
+ * Sorts a 409 into a version mismatch or a client-side redirect; undefined
+ * when it carries none of the Inertia headers.
+ */
+function classifyConflict(response: Response, ctx: ClassifyContext, method: string): BackendResult | undefined {
+  const location = response.headers.get(Header.location);
+  const serverVersion = response.headers.get(Header.version);
+  if (serverVersion !== null) return { kind: "version-mismatch", serverVersion, location, response };
+
+  // Servers before protocol v3 answer a mismatch with only X-Inertia-Location,
+  // pointing back at the requested URL. Redirecting there would loop.
+  if (location !== null && ctx.sentVersion && method === "GET") {
+    const requested = ctx.requestedPath ?? ctx.url.pathname + ctx.url.search;
+    if (rewriteLocation(location, ctx.backend, ctx.url) === requested) {
+      return { kind: "version-mismatch", serverVersion: "", location, response };
+    }
+  }
+
+  const target = response.headers.get(Header.redirect) ?? location;
+  if (target === null) return undefined;
+  return { kind: "redirect", location: rewriteLocation(target, ctx.backend, ctx.url), status: 303, response };
+}
+
 /**
  * Sorts a backend response into the cases the protocol defines. Reads the
  * body only for page objects.
  */
-export async function classifyResponse(
-  response: Response,
-  ctx: { method: string; backend: string | URL; url: URL; sentVersion?: string | undefined; requestedPath?: string },
-): Promise<BackendResult> {
+export async function classifyResponse(response: Response, ctx: ClassifyContext): Promise<BackendResult> {
   const method = ctx.method.toUpperCase();
 
   if (response.status === 409) {
-    const inertiaLocation = response.headers.get(Header.location);
-    const inertiaRedirect = response.headers.get(Header.redirect);
-    const serverVersion = response.headers.get(Header.version);
-    if (serverVersion !== null) {
-      return { kind: "version-mismatch", serverVersion, location: inertiaLocation, response };
-    }
-    // Servers before protocol v3 answer a mismatch with only X-Inertia-Location,
-    // pointing back at the requested URL. Redirecting there would loop.
-    if (inertiaLocation !== null && ctx.sentVersion && method === "GET") {
-      const requested = ctx.requestedPath ?? ctx.url.pathname + ctx.url.search;
-      if (rewriteLocation(inertiaLocation, ctx.backend, ctx.url) === requested) {
-        return { kind: "version-mismatch", serverVersion: "", location: inertiaLocation, response };
-      }
-    }
-    if (inertiaRedirect !== null) {
-      return {
-        kind: "redirect",
-        location: rewriteLocation(inertiaRedirect, ctx.backend, ctx.url),
-        status: 303,
-        response,
-      };
-    }
-    if (inertiaLocation !== null) {
-      return {
-        kind: "redirect",
-        location: rewriteLocation(inertiaLocation, ctx.backend, ctx.url),
-        status: 303,
-        response,
-      };
-    }
+    const conflict = classifyConflict(response, ctx, method);
+    if (conflict) return conflict;
   }
 
   if (REDIRECT_STATUSES.has(response.status)) {
