@@ -229,3 +229,35 @@ export async function fetchPartial(
   }
   return result.page;
 }
+
+export interface DeferredRequest {
+  page: { url: string; component: string; version?: string | null };
+  keys: string[];
+  /** Component to render once the keys are there. */
+  render: string;
+  /** Component to render when loading fails. */
+  error?: string | undefined;
+}
+
+export type DeferredResult =
+  { kind: "loaded"; Component: AstroComponent; page: Page } | { kind: "failed"; Component: AstroComponent | undefined };
+
+/**
+ * Loads the props of a deferred island. Any failure (backend, missing or
+ * rescued keys, unresolvable component) is logged and yields the error
+ * component, or none if that cannot be resolved either.
+ */
+export async function loadDeferred(astro: AstroLike, deps: HandlerDeps, req: DeferredRequest): Promise<DeferredResult> {
+  try {
+    const page = await fetchPartial(astro, deps, req.page, req.keys);
+    const missing = req.keys.filter((key) => !(key in page.props) || page.rescuedProps?.includes(key));
+    if (missing.length > 0) {
+      throw new BackendError(`astro-inertia: deferred props missing from the response: ${missing.join(", ")}`, 502);
+    }
+    return { kind: "loaded", Component: await deps.resolver.resolve(req.render), page };
+  } catch (failure) {
+    (deps.log ?? console).error(failure);
+    const Component = req.error ? await deps.resolver.resolve(req.error).catch(() => undefined) : undefined;
+    return { kind: "failed", Component };
+  }
+}

@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchPartial, handle, MISMATCH_HEADER, type HandlerDeps } from "./handler.js";
+import {
+  fetchPartial,
+  handle,
+  loadDeferred,
+  MISMATCH_HEADER,
+  type DeferredRequest,
+  type HandlerDeps,
+} from "./handler.js";
 import { resolveOptions, type RuntimeOptions } from "./options.js";
 import { createResolver } from "./resolver.js";
 
@@ -244,5 +251,61 @@ describe("fetchPartial", () => {
       message: expect.stringContaining("partial reload of /users"),
     });
     expect(d.fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("loadDeferred", () => {
+  const request = (extra: Partial<DeferredRequest> = {}): DeferredRequest => ({
+    page: { url: "/users", component: "Home", version: "2" },
+    keys: ["stats"],
+    render: "Home",
+    ...extra,
+  });
+
+  it("loads the page and resolves the render component", async () => {
+    const d = deps(async () => page({ props: { stats: 1 } }));
+    const result = await loadDeferred(astro("/_server-islands/x"), d, request());
+    expect(result.kind).toBe("loaded");
+    if (result.kind !== "loaded") return;
+    expect(result.Component).toBe(Home);
+    expect(result.page.props).toMatchObject({ stats: 1 });
+    expect(d.log?.error).not.toHaveBeenCalled();
+  });
+
+  it("fails when a requested key is missing from the response", async () => {
+    const d = deps(async () => page({ props: { other: 1 } }));
+    const result = await loadDeferred(astro(), d, request({ keys: ["stats", "chart"], error: "Home" }));
+    expect(result).toEqual({ kind: "failed", Component: Home });
+    expect(d.log?.error).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("stats, chart") }),
+    );
+  });
+
+  it("fails when a requested key was rescued", async () => {
+    const d = deps(async () => page({ props: { stats: null }, rescuedProps: ["stats"] }));
+    const result = await loadDeferred(astro(), d, request());
+    expect(result).toEqual({ kind: "failed", Component: undefined });
+    expect(d.log?.error).toHaveBeenCalledOnce();
+  });
+
+  it("fails without a component when the backend is unreachable and no error component is set", async () => {
+    const d = deps(async () => {
+      throw new Error("down");
+    });
+    const result = await loadDeferred(astro(), d, request());
+    expect(result).toEqual({ kind: "failed", Component: undefined });
+    expect(d.log?.error).toHaveBeenCalledOnce();
+  });
+
+  it("does not crash when the error component fails to resolve", async () => {
+    const d = deps(async () => page({ props: {} }));
+    const result = await loadDeferred(astro(), d, request({ error: "Missing" }));
+    expect(result).toEqual({ kind: "failed", Component: undefined });
+  });
+
+  it("falls back when the render component fails to resolve", async () => {
+    const d = deps(async () => page({ props: { stats: 1 } }));
+    const result = await loadDeferred(astro(), d, request({ render: "Missing", error: "Home" }));
+    expect(result).toEqual({ kind: "failed", Component: Home });
   });
 });
