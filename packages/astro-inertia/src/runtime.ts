@@ -20,7 +20,10 @@ const resolver = createResolver(components, options.pagesDir, runtime.resolve);
 
 export const deps: HandlerDeps = { options, runtime, resolver, warned: new Set() };
 
-function astroLike(astro: { request: Request; url: URL; clientAddress?: string }): AstroLike {
+/** What the runtime needs from Astro's global, or from the context passed to an endpoint. */
+type AstroContext = { request: Request; url: URL; clientAddress?: string };
+
+function astroLike(astro: AstroContext): AstroLike {
   let clientAddress: string | undefined;
   try {
     clientAddress = astro.clientAddress;
@@ -30,12 +33,12 @@ function astroLike(astro: { request: Request; url: URL; clientAddress?: string }
   return { request: astro.request, url: astro.url, clientAddress };
 }
 
-export function handleRequest(astro: { request: Request; url: URL; clientAddress?: string }): Promise<HandleResult> {
+export function handleRequest(astro: AstroContext): Promise<HandleResult> {
   return handle(astroLike(astro), deps);
 }
 
 export function loadPartial(
-  astro: { request: Request; url: URL; clientAddress?: string },
+  astro: AstroContext,
   page: { url: string; component: string; version?: string | null },
   keys: string[],
 ): Promise<Page> {

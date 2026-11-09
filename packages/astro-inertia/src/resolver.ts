@@ -1,4 +1,5 @@
 import type { AstroComponent, ComponentLoader, ComponentModule, RuntimeOptions } from "./options.js";
+import { trimSlashes } from "./paths.js";
 
 export class ComponentNotFoundError extends Error {
   override name = "ComponentNotFoundError";
@@ -18,7 +19,7 @@ export class ComponentNotFoundError extends Error {
 /** "Users/Index" for "/src/pages-inertia/Users/Index.astro". */
 export function componentName(file: string, pagesDir: string): string | undefined {
   const normalized = file.replace(/\\/g, "/").replace(/^\.?\//, "");
-  const prefix = pagesDir.replace(/^\.?\/+|\/+$/g, "") + "/";
+  const prefix = trimSlashes(pagesDir) + "/";
   const index = normalized.indexOf(prefix);
   if (index === -1) return undefined;
   const rest = normalized.slice(index + prefix.length);
@@ -27,8 +28,10 @@ export function componentName(file: string, pagesDir: string): string | undefine
 }
 
 /**
- * Normalises a component name: no leading or trailing slashes, no "..",
- * and "." in names like "Users.Index" accepted as a separator.
+ * Normalises a component name: trims whitespace and leading or trailing
+ * slashes, and rejects names with a ".." or "." path segment (undefined).
+ * A "." inside a segment, as in "Users.Index", is kept here; createResolver
+ * tries it as a "/" separator when looking the name up.
  */
 export function normalizeName(name: string): string | undefined {
   const cleaned = name.trim().replace(/^\/+|\/+$/g, "");

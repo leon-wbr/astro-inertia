@@ -1,5 +1,6 @@
 import { Header, parsePage, type Page } from "./protocol.js";
 import type { ResolvedOptions } from "./options.js";
+import { trimTrailingSlashes } from "./paths.js";
 
 export interface ForwardContext {
   /** The incoming request (to Astro). */
@@ -24,7 +25,7 @@ export interface ForwardContext {
 export function backendUrl(backend: string | URL, pathAndQuery: string): URL {
   const base = new URL(backend);
   const target = new URL(pathAndQuery, "http://placeholder");
-  const basePath = base.pathname.replace(/\/+$/, "");
+  const basePath = trimTrailingSlashes(base.pathname);
   base.pathname = basePath + target.pathname;
   base.search = target.search;
   base.hash = "";
@@ -97,7 +98,7 @@ export function rewriteLocation(location: string, backend: string | URL, publicU
     return location;
   }
   if (resolved.origin === backendBase.origin || resolved.origin === publicUrl.origin) {
-    const basePath = backendBase.pathname.replace(/\/+$/, "");
+    const basePath = trimTrailingSlashes(backendBase.pathname);
     let path = resolved.pathname;
     if (resolved.origin === backendBase.origin && basePath && path.startsWith(basePath)) {
       path = path.slice(basePath.length) || "/";
