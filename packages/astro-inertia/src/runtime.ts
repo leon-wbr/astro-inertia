@@ -18,7 +18,7 @@ import { createResolver } from "./resolver.js";
 
 const resolver = createResolver(components, options.pagesDir, runtime.resolve);
 
-export const deps: HandlerDeps = { options, runtime, resolver };
+export const deps: HandlerDeps = { options, runtime, resolver, warned: new Set() };
 
 function astroLike(astro: { request: Request; url: URL; clientAddress?: string }): AstroLike {
   let clientAddress: string | undefined;
