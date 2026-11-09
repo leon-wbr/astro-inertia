@@ -214,22 +214,16 @@ export async function fetchPartial(
   page: { url: string; component: string; version?: string | null },
   keys: string[],
 ): Promise<Page> {
-  const result = await fetchBackend(astro, deps, {
-    path: page.url,
-    method: "GET",
-    version: page.version ?? undefined,
-    headers: { [Header.partialComponent]: page.component, [Header.partialData]: keys.join(",") },
-  });
-  if (result.kind === "version-mismatch") {
-    const retry = await fetchBackend(astro, deps, {
+  const request = (version: string | undefined) =>
+    fetchBackend(astro, deps, {
       path: page.url,
       method: "GET",
-      version: undefined,
+      version,
       headers: { [Header.partialComponent]: page.component, [Header.partialData]: keys.join(",") },
     });
-    if (retry.kind === "page") return retry.page;
-    throw new BackendError(`astro-inertia: partial reload of ${page.url} did not return a page object`, 502);
-  }
+
+  let result = await request(page.version ?? undefined);
+  if (result.kind === "version-mismatch") result = await request(undefined);
   if (result.kind !== "page") {
     throw new BackendError(`astro-inertia: partial reload of ${page.url} answered with a ${result.kind}`, 502);
   }
