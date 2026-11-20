@@ -1,6 +1,6 @@
 {
   "name": "astro-inertia",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Render any Inertia v3 server's pages with Astro components, on the server. Works with Laravel or any other Inertia backend. Experimental.",
   "license": "MIT",
   "repository": {
