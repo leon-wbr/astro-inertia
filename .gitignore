@@ -8,6 +8,8 @@ playwright-report
 .env
 **/src/inertia.d.ts
 .cache
+packages/astro-inertia/reports
+.stryker-tmp
 packages/astro-inertia/README.md
 packages/astro-inertia/LICENSE
 coverage

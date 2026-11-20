@@ -374,3 +374,176 @@ describe("response headers", () => {
     expect(out.headers.getSetCookie()).toEqual(["s=1"]);
   });
 });
+
+describe("forwardHeaders X-Forwarded-*", () => {
+  const forward = (url: string, request: Request, clientAddress?: string) =>
+    forwardHeaders({ request, url: new URL(url), backend, version: undefined, clientAddress }, options);
+
+  it("derives the default port from the protocol and keeps an explicit one", () => {
+    const http = forward("http://example.org/", incoming({ url: "http://example.org/" }));
+    expect(http.get("x-forwarded-proto")).toBe("http");
+    expect(http.get("x-forwarded-port")).toBe("80");
+    const https = forward("https://example.org/", incoming({ url: "https://example.org/" }));
+    expect(https.get("x-forwarded-port")).toBe("443");
+    const custom = forward("https://example.org:8443/", incoming({ url: "https://example.org:8443/" }));
+    expect(custom.get("x-forwarded-port")).toBe("8443");
+  });
+
+  it("appends the client address to a prior X-Forwarded-For, or keeps the prior one alone", () => {
+    const request = incoming({ headers: { "x-forwarded-for": "10.0.0.1" } });
+    expect(forward(publicUrl.href, request, "10.0.0.2").get("x-forwarded-for")).toBe("10.0.0.1, 10.0.0.2");
+    expect(forward(publicUrl.href, request).get("x-forwarded-for")).toBe("10.0.0.1");
+    expect(forward(publicUrl.href, incoming(), "10.0.0.2").get("x-forwarded-for")).toBe("10.0.0.2");
+    expect(forward(publicUrl.href, incoming()).has("x-forwarded-for")).toBe(false);
+  });
+
+  it("only forwards configured headers that are present", () => {
+    expect(forward(publicUrl.href, incoming()).has("cookie")).toBe(false);
+  });
+});
+
+describe("backendUrl and rewriteLocation edge cases", () => {
+  it("strips several trailing slashes of the backend base path", () => {
+    expect(backendUrl("http://app.internal/site//", "/about").href).toBe("http://app.internal/site/about");
+  });
+
+  it("keeps backend paths outside the base path", () => {
+    expect(rewriteLocation("http://app.internal/other/a", "http://app.internal/site", publicUrl)).toBe("/other/a");
+  });
+
+  it("only strips the base path on the backend's origin", () => {
+    expect(rewriteLocation("https://example.org/site/a", "http://app.internal/site", publicUrl)).toBe("/site/a");
+  });
+
+  it("maps the base path itself to the root", () => {
+    expect(rewriteLocation("http://app.internal/site", "http://app.internal/site", publicUrl)).toBe("/");
+  });
+
+  it("returns an unparseable location as is", () => {
+    expect(rewriteLocation("http://[bad", backend, publicUrl)).toBe("http://[bad");
+  });
+});
+
+describe("classifyResponse edge cases", () => {
+  const sameUrl = { "x-inertia-location": "http://typo3.internal/de/ueber-uns?x=1" };
+
+  it("does not read Inertia headers on a non-409 response", async () => {
+    const result = await classifyResponse(new Response("ok", { status: 200, headers: sameUrl }), {
+      ...ctx,
+      sentVersion: "v1",
+    });
+    expect(result.kind).toBe("passthrough");
+  });
+
+  it("passes a 409 without Inertia headers through", async () => {
+    expect((await classifyResponse(new Response(null, { status: 409 }), ctx)).kind).toBe("passthrough");
+  });
+
+  it("redirects a 409 back to the same URL when no version was sent", async () => {
+    const result = await classifyResponse(new Response(null, { status: 409, headers: sameUrl }), ctx);
+    expect(result).toMatchObject({ kind: "redirect", status: 303 });
+  });
+
+  it("redirects a 409 back to the same URL on a non-GET request", async () => {
+    const result = await classifyResponse(new Response(null, { status: 409, headers: sameUrl }), {
+      ...ctx,
+      method: "POST",
+      sentVersion: "v1",
+    });
+    expect(result).toMatchObject({ kind: "redirect", status: 303 });
+  });
+
+  it("redirects a 409 to another URL even when a version was sent", async () => {
+    const result = await classifyResponse(
+      new Response(null, { status: 409, headers: { "x-inertia-location": "/elsewhere" } }),
+      { ...ctx, sentVersion: "v1" },
+    );
+    expect(result).toMatchObject({ kind: "redirect", location: "/elsewhere" });
+  });
+
+  it("compares a pre-v3 409 against the requested path override", async () => {
+    const result = await classifyResponse(new Response(null, { status: 409, headers: sameUrl }), {
+      ...ctx,
+      sentVersion: "v1",
+      requestedPath: "/other",
+    });
+    expect(result.kind).toBe("redirect");
+  });
+
+  it("ignores a Location header on a non-redirect status", async () => {
+    const result = await classifyResponse(new Response("x", { status: 200, headers: { location: "/a" } }), ctx);
+    expect(result.kind).toBe("passthrough");
+  });
+
+  it("passes a redirect status without Location through", async () => {
+    expect((await classifyResponse(new Response(null, { status: 302 }), ctx)).kind).toBe("passthrough");
+  });
+
+  it("keeps a 301 after PUT", async () => {
+    const result = await classifyResponse(new Response(null, { status: 301, headers: { location: "/a" } }), {
+      ...ctx,
+      method: "PUT",
+    });
+    expect(result).toMatchObject({ status: 301 });
+  });
+
+  it("passes an X-Inertia response without a JSON content type through", async () => {
+    const result = await classifyResponse(
+      new Response("<p>x</p>", { headers: { "x-inertia": "true", "content-type": "text/html" } }),
+      ctx,
+    );
+    expect(result.kind).toBe("passthrough");
+  });
+});
+
+describe("response header edge cases", () => {
+  it("passthrough drops every hop-by-hop header and copies other headers verbatim", () => {
+    const hopByHop = [
+      "connection",
+      "keep-alive",
+      "transfer-encoding",
+      "content-encoding",
+      "content-length",
+      "upgrade",
+      "proxy-authenticate",
+      "proxy-authorization",
+      "te",
+      "trailer",
+    ];
+    const response = new Response("x", {
+      headers: [...hopByHop.map((name): [string, string] => [name, "1"]), ["x-link", "http://typo3.internal/x"]],
+    });
+    const out = passthrough(response, { backend, url: publicUrl });
+    for (const name of hopByHop) expect(out.headers.has(name), name).toBe(false);
+    expect(out.headers.get("x-link")).toBe("http://typo3.internal/x");
+  });
+
+  it("rewriteVary trims entries and matches Cookie case-insensitively", () => {
+    expect(rewriteVary("Accept-Language ,  X-Inertia ", false)).toBe("Accept-Language");
+    expect(rewriteVary("Accept, COOKIE", true)).toBe("Accept, COOKIE");
+    expect(rewriteVary("Accept", false)).toBe("Accept");
+  });
+
+  it("pageResponseHeaders sets no Vary when there is nothing to send", () => {
+    expect(pageResponseHeaders(new Response("{}"), options, false).has("vary")).toBe(false);
+    const onlyInertia = new Response("{}", { headers: { vary: "X-Inertia" } });
+    expect(pageResponseHeaders(onlyInertia, options, false).has("vary")).toBe(false);
+  });
+
+  it("pageResponseHeaders leaves Vary out when it is not a configured response header", () => {
+    const custom = resolveOptions({ responseHeaders: ["cache-control"] });
+    const response = new Response("{}", { headers: { vary: "Accept", "cache-control": "no-store" } });
+    const headers = pageResponseHeaders(response, custom, true);
+    expect(headers.has("vary")).toBe(false);
+    expect(headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("redirectResponse copies Cache-Control only when present", () => {
+    const withCache = new Response(null, { status: 303, headers: { "cache-control": "no-store" } });
+    const copied = redirectResponse({ kind: "redirect", location: "/a", status: 303, response: withCache });
+    expect(copied.headers.get("cache-control")).toBe("no-store");
+    const without = new Response(null, { status: 303 });
+    const plain = redirectResponse({ kind: "redirect", location: "/a", status: 303, response: without });
+    expect(plain.headers.has("cache-control")).toBe(false);
+  });
+});

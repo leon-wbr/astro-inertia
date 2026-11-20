@@ -11,6 +11,8 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/test-results/**",
       "**/playwright-report/**",
+      "**/.stryker-tmp/**",
+      "**/reports/**",
       "**/inertia.d.ts",
       ".cache/**",
     ],
